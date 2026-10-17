@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V0.7</title>
+  <title>Border Blitz — Prototype V0.8</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#3a4b5c; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
@@ -45,20 +45,26 @@
     .board-head b{font-size:clamp(10px,3vw,13px)}
     .board{aspect-ratio:38/33;}
     .board-head .clock{font-size:13px}
+  
+    /* V0.8 : six royaumes visibles sans agrandir les commandes sur iPhone. */
+    .scoreboard{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+    .score{padding:5px 7px 6px;min-width:0;border-color:var(--realm)}
+    .score strong{font-size:clamp(15px,4vw,21px);line-height:1.15}
+    .score small{font-size:clamp(9px,2.5vw,11px);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .score .bar{background:var(--realm);transition:none}
+    .app{gap:7px}.board-card{padding:6px}
+    .legend{gap:7px;justify-content:space-around}.legend span{font-size:10px}
+    @media(max-width:370px){.score{padding:5px}.score small{font-size:9px}.board-head{gap:4px}}
   </style>
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.7 • GRANDE CARTE</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
-  <section class="scoreboard" aria-label="Territoires des royaumes">
-    <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small id="army0">0 unités</small><div class="bar" id="bar0"></div></div>
-    <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small id="army1">0 unités</small><div class="bar" id="bar1"></div></div>
-    <div class="score orange"><small>🟠 ORANGE</small><strong id="score2">0</strong><small id="army2">0 unités</small><div class="bar" id="bar2"></div></div>
-  </section>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.8 • SIX ROYAUMES</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <section class="scoreboard" id="scoreboard" aria-label="Territoires des six royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
-    <div class="board-head"><b>CARTE • 3/10 ROYAUMES</b><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div><span class="clock" id="clock">02:00</span></div>
-    <div class="board" id="board"><canvas id="map" role="img" aria-label="Carte des royaumes. Touchez une zone à conquérir pour lancer une offensive continue."></canvas></div>
-    <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span><i class="dot" style="background:#35a4f1"></i>Vous</span><span><i class="dot" style="background:#f46d74"></i>Rouge</span><span><i class="dot" style="background:#ecb65a"></i>Orange</span></div>
+    <div class="board-head"><b>CARTE • 6/10 ROYAUMES</b><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div><span class="clock" id="clock">02:00</span></div>
+    <div class="board" id="board"><canvas id="map" role="img" aria-label="Carte des royaumes. Touchez un royaume pour lui donner un ordre global de conquête."></canvas></div>
+    <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span>🔵 Vous</span><span>🔴 Rouge</span><span>🟠 Orange</span><span>🟣 Violet</span><span>🟢 Vert</span><span>🌸 Rose</span></div>
   </section>
   <section class="actions">
     <div class="realm-army"><div><small>VOTRE ARMÉE COMMUNE</small><div><strong id="totalArmy">55</strong> <small>unités disponibles</small></div></div><div><small id="production">+3 / sec</small></div></div>
@@ -67,34 +73,40 @@
       <div class="power-extremes"><span>1 %</span><span>100 %</span></div>
       <div class="power-preview" id="powerPreview"><span id="previewSource">Armée du royaume</span><span id="previewUnits">Envoi : <strong>—</strong></span></div>
     </div>
-    <div class="war-row"><span class="war-label" id="warLabel"><strong>Prêt à attaquer</strong> Touchez une zone grise, rouge ou orange.</span><button type="button" class="war-stop" id="stopAttack" disabled>Arrêter</button></div>
+    <div class="war-row"><span class="war-label" id="warLabel"><strong>Prêt à attaquer</strong> Touchez votre royaume pour vous étendre, ou un ennemi pour l’attaquer.</span><button type="button" class="war-stop" id="stopAttack" disabled>Arrêter</button></div>
     <p class="hint" id="hint" aria-live="polite"><strong>À vous de jouer !</strong> Touchez une zone à conquérir pour lancer une offensive sur toute la frontière.</p>
   </section>
-  <div class="footer">3 royaumes actifs sur 10 emplacements. Touchez pour attaquer ; zoomez puis glissez pour explorer. Partie : 2 minutes.</div>
+  <div class="footer">6 royaumes actifs sur 10 emplacements. Touchez votre territoire pour gagner du terrain neutre, ou un adversaire pour l’attaquer. Partie : 2 minutes.</div>
 </main>
 <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="modal"><div class="symbol" id="resultSymbol">🏆</div><h2 id="resultTitle">Partie terminée</h2><p id="resultText"></p><button class="primary" id="playAgain">Nouvelle partie</button></div></div>
 <script>
 (()=>{
   'use strict';
   // La grille n'est utilisée que pour les calculs : elle n'apparaît jamais à l'écran.
-  // Grille de densité identique à la V0.6, surface totale 2,25 fois supérieure.
-  // Le système garde 3 combattants, et prévoit 10 points de départ espacés.
+  // Carte 304 × 264 = 80 256 cellules ; 10 points de départ.
   const DETAIL=4, AREA=DETAIL*DETAIL;
-  const COLS=57*DETAIL, ROWS=49.5*DETAIL, TOTAL=COLS*ROWS;
-  const ACTIVE_REALMS=3;
+  const COLS=76*DETAIL, ROWS=66*DETAIL, TOTAL=COLS*ROWS;
+  const ACTIVE_REALMS=6;
   const SPAWN_SLOTS=[
-    [.17,.22],[.83,.22],[.50,.78],
-    [.50,.17],[.17,.50],[.83,.50],[.17,.80],[.83,.80],[.38,.50],[.62,.50]
+    [.14,.17],[.50,.16],[.86,.17],
+    [.14,.49],[.50,.49],[.86,.49],
+    [.14,.82],[.50,.82],[.86,.82],[.68,.67]
   ];
-  const GAME_LENGTH=120, MAX_ARMY=6500, WAVE_MS=220/DETAIL;
+  const ACTIVE_SLOTS=[0,2,4,6,8,9];
+  const GAME_LENGTH=120, MAX_ARMY=6500, WAVE_MS=80, FRAGMENT_LIMIT=18;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
   const hint=$('hint'), slider=$('powerSlider'), stopBtn=$('stopAttack');
-  const rgb=['#35a4f1','#f46d74','#ecb65a','#354759'];
-  const armyName=['Bleu','Rouge','Orange'];
-  let tiles=new Int8Array(TOTAL), territoryCounts=[0,0,0], armies=[180,155,155], campaigns=[null,null,null];
+  const rgb=['#35a4f1','#f46d74','#ecb65a','#ad88f2','#47c995','#e78bc1','#354759'];
+  const armyName=['Vous','Rouge','Orange','Violet','Vert','Rose'];
+  const emoji=['🔵','🔴','🟠','🟣','🟢','🌸'];
+  let tiles=new Int8Array(TOTAL), territoryCounts=Array(ACTIVE_REALMS).fill(0),
+      armies=[220,180,180,180,180,180], campaigns=Array(ACTIVE_REALMS).fill(null);
+  const frontiers=Array.from({length:ACTIVE_REALMS},()=>new Set());
+  const sumsX=Array(ACTIVE_REALMS).fill(0), sumsY=Array(ACTIVE_REALMS).fill(0);
+  const capitals=Array(ACTIVE_REALMS).fill(-1);
   let percent=50, timeLeft=GAME_LENGTH, running=false, timer=null, wavesTimer=null, botTimer=null;
-  let flashing=new Map(), touched=null, mapW=370, mapH=330, lastMessage='';
+  let flashing=new Map(), touched=null, mapW=370, mapH=330, lastMessage='', waveCount=0, capturesSinceCleanup=0;
   let zoom=1, offsetX=0, offsetY=0;
   const pointers=new Map();
   let pinch=null, preventTapAfterPinch=false;
@@ -107,36 +119,96 @@
   const prod=owner=>count(owner)?Math.max(3,Math.ceil(count(owner)*.18/AREA)):0;
   const maximumCommit=(owner,pct)=>armies[owner]<2?0:Math.min(armies[owner]-1,Math.max(1,Math.floor(armies[owner]*pct/100)));
   const message=html=>{if(lastMessage!==html){hint.innerHTML=html;lastMessage=html;}};
-  const nameFor=owner=>owner<0?'neutre':owner===0?'bleu':owner===1?'rouge':'orange';
+  const nameFor=owner=>owner<0?'neutre':armyName[owner].toLowerCase();
   // Un front se propage uniquement par des cellules voisines déjà conquises.
   // On mesure les cellules en contact avec le royaume pour pousser toute la frontière.
-  function frontier(owner){
-    const result=[];
-    for(let i=0;i<TOTAL;i++){
-      if(tiles[i]===owner)continue;
-      const x=i%COLS,y=(i/COLS)|0;
-      if((x>0&&tiles[i-1]===owner)||(x<COLS-1&&tiles[i+1]===owner)||
-         (y>0&&tiles[i-COLS]===owner)||(y<ROWS-1&&tiles[i+COLS]===owner))result.push(i);
+
+  // Les cases frontalières changent au voisinage immédiat d'une conquête.
+  function updateFrontAt(i){
+    const own=tiles[i], neighbors=near(i);
+    for(let p=0;p<ACTIVE_REALMS;p++){
+      if(own===p){frontiers[p].delete(i);continue;}
+      let adjacent=false;
+      for(const n of neighbors){if(tiles[n]===p){adjacent=true;break;}}
+      if(adjacent)frontiers[p].add(i);else frontiers[p].delete(i);
     }
-    return result;
   }
+  function changeTile(i,next){
+    const prev=tiles[i];if(prev===next)return false;
+    if(prev>=0){territoryCounts[prev]--;sumsX[prev]-=i%COLS+.5;sumsY[prev]-=(i/COLS|0)+.5;}
+    tiles[i]=next;
+    if(next>=0){territoryCounts[next]++;sumsX[next]+=i%COLS+.5;sumsY[next]+=(i/COLS|0)+.5;}
+    updateFrontAt(i);for(const n of near(i))updateFrontAt(n);
+    return true;
+  }
+  function rebuildFrontiers(){
+    for(const f of frontiers)f.clear();
+    for(let i=0;i<TOTAL;i++){
+      const owner=tiles[i];if(owner<0)continue;
+      for(const n of near(i))if(tiles[n]!==owner)frontiers[owner].add(n);
+    }
+  }
+  function verifyCounts(){
+    const actual=Array(ACTIVE_REALMS).fill(0);let neutral=0;
+    for(const t of tiles){if(t<0)neutral++;else if(t<ACTIVE_REALMS)actual[t]++;else return false;}
+    return neutral+actual.reduce((a,b)=>a+b,0)===TOTAL&&actual.every((n,i)=>n===territoryCounts[i]);
+  }
+  // Petites enclaves entièrement cernées par UN royaume : paiement exact
+  // du coût militaire, protection des capitales et de toute dernière région viable.
+  function cleanupFragments(){
+    const visited=new Uint8Array(TOTAL),queue=new Int32Array(TOTAL);
+    let cleaned=0,detected=0;
+    for(let seed=0;seed<TOTAL;seed++){
+      if(visited[seed])continue;
+      const source=tiles[seed];let head=0,tail=1,borderOwner=-2,valid=true,hasCapital=false;
+      queue[0]=seed;visited[seed]=1;
+      while(head<tail){
+        const i=queue[head++],x=i%COLS,y=i/COLS|0;
+        if(x===0||x===COLS-1||y===0||y===ROWS-1)valid=false;
+        if(source>=0&&capitals[source]===i)hasCapital=true;
+        for(const j of near(i)){
+          const o=tiles[j];
+          if(o===source){if(!visited[j]){visited[j]=1;queue[tail++]=j;}}
+          else if(borderOwner===-2)borderOwner=o;
+          else if(borderOwner!==o)valid=false;
+        }
+      }
+      if(tail>FRAGMENT_LIMIT||source===borderOwner||(source>=0&&territoryCounts[source]-tail<100))continue;
+      detected++;
+      if(!valid||hasCapital||borderOwner<0)continue;
+      const guards=[];
+      let charge=0;
+      for(let j=0;j<tail;j++){const g=costs(borderOwner,queue[j]);guards.push(g);charge+=g;}
+      if(armies[borderOwner]<charge+1)continue;
+      armies[borderOwner]-=charge;
+      for(let j=0;j<tail;j++){
+        const i=queue[j],defender=tiles[i],guard=guards[j];
+        if(defender>=0)armies[defender]=Math.max(0,armies[defender]-guard*.65);
+        changeTile(i,borderOwner);cleaned++;
+      }
+    }
+    return {cleaned,detected};
+  }
+  function scoreMarkup(){
+    return armyName.map((name,i)=>'<div class="score" style="--realm:'+rgb[i]+'"><small>'+emoji[i]+' '+name.toUpperCase()+'</small><strong id="score'+i+'">0 %</strong><small id="army'+i+'">0 unités</small><div class="bar" id="bar'+i+'"></div></div>').join('');
+  }
+  function frontier(owner){return [...frontiers[owner]];}
   function centers(i){return {x:(i%COLS+.5)/COLS,y:(Math.floor(i/COLS)+.5)/ROWS};}
   function startArmyPositions(){
-    tiles.fill(-1);territoryCounts.fill(0);
-    // Dix emplacements sans chevauchement, seuls les trois premiers jouent.
-    // Une même taille de capitale qu'en V0.6, malgré la carte agrandie.
-    const rx=4.5*DETAIL,ry=4.2*DETAIL;
+    tiles.fill(-1);territoryCounts.fill(0);sumsX.fill(0);sumsY.fill(0);capitals.fill(-1);
+    const rx=3.5*DETAIL,ry=3.3*DETAIL;
     for(let owner=0;owner<ACTIVE_REALMS;owner++){
-      const [px,py]=SPAWN_SLOTS[owner];
-      const cx=px*COLS,cy=py*ROWS;
+      const [px,py]=SPAWN_SLOTS[ACTIVE_SLOTS[owner]],cx=px*COLS,cy=py*ROWS;
+      capitals[owner]=index(Math.floor(cx),Math.floor(cy));
       for(let y=Math.max(0,Math.floor(cy-ry));y<Math.min(ROWS,Math.ceil(cy+ry));y++){
         for(let x=Math.max(0,Math.floor(cx-rx));x<Math.min(COLS,Math.ceil(cx+rx));x++){
           if(((x+.5-cx)/rx)**2+((y+.5-cy)/ry)**2>1)continue;
           const i=index(x,y);
-          if(tiles[i]===-1){tiles[i]=owner;territoryCounts[owner]++;}
+          if(tiles[i]===-1){tiles[i]=owner;territoryCounts[owner]++;sumsX[owner]+=x+.5;sumsY[owner]+=y+.5;}
         }
       }
     }
+    rebuildFrontiers();
   }
   function renderPower(){
     slider.value=String(percent);$('powerValue').textContent=percent+' %';
@@ -148,14 +220,16 @@
   }
   function renderWar(){
     const c=campaigns[0];stopBtn.disabled=!running||!c;
-    $('warLabel').innerHTML=c?'<strong>⚔ Offensive en cours</strong> '+(c.captured*100/TOTAL).toFixed(1)+' % gagné · '+Math.ceil(c.budget)+' unités en attaque'
-      :'<strong>Prêt à attaquer</strong> Touchez une zone ennemie ou neutre.';
+    const label=c?(c.aimOwner<0?'Expansion neutre':'Attaque : '+armyName[c.aimOwner]):'En attente';
+    $('warLabel').innerHTML=c?'<strong>⚔ '+label+'</strong> '+(c.captured*100/TOTAL).toFixed(1)+' % gagnés · '+Math.ceil(c.budget)+' unités engagées'
+      :'<strong>Prêt à conquérir</strong> Touchez votre royaume ou un ennemi.';
   }
   function renderScore(){
-    for(let i=0;i<3;i++){
-      const n=count(i);$('score'+i).textContent=Math.round(100*n/TOTAL)+' %';
+    for(let i=0;i<ACTIVE_REALMS;i++){
+      const n=count(i),share=100*n/TOTAL;
+      $('score'+i).textContent=(share<1?share.toFixed(1):Math.round(share))+' %';
       $('army'+i).textContent=Math.floor(armies[i])+' unités';
-      $('bar'+i).style.width=(100*n/TOTAL)+'%';
+      $('bar'+i).style.width=share+'%';
     }
     $('clock').textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');
     renderPower();renderWar();
@@ -197,13 +271,13 @@
     const right=Math.min(COLS,Math.ceil(((mapW-offsetX)/zoom)/dx)+1);
     const top=Math.max(0,Math.floor((-offsetY/zoom)/dy)-1);
     const bottom=Math.min(ROWS,Math.ceil(((mapH-offsetY)/zoom)/dy)+1);
-    const borders=[new Path2D(),new Path2D(),new Path2D()];
+    const borders=Array.from({length:ACTIVE_REALMS},()=>new Path2D());
     for(let row=top;row<bottom;row++){
       const base=row*COLS;
       for(let x=left;x<right;){
         const owner=tiles[base+x];let end=x+1;
         while(end<right && tiles[base+end]===owner)end++;
-        ctx.fillStyle=rgb[owner<0?3:owner];
+        ctx.fillStyle=rgb[owner<0?ACTIVE_REALMS:owner];
         ctx.fillRect(x*dx-.12,row*dy-.12,(end-x)*dx+.24,dy+.24);
         x=end;
       }
@@ -217,7 +291,7 @@
       }
     }
     for(let owner=0;owner<ACTIVE_REALMS;owner++){
-      ctx.lineWidth=1.2/zoom;ctx.strokeStyle=['#a1e4ff','#ffb6bd','#ffe0a1'][owner];
+      ctx.lineWidth=1.05/zoom;ctx.strokeStyle=['#a1e4ff','#ffb6bd','#ffe0a1','#dacbff','#a0ffe0','#ffd0ed'][owner];
       ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(borders[owner]);
     }
     // Les zones récemment conquises clignotent brièvement : sensation d'avancée.
@@ -232,20 +306,14 @@
     }
     ctx.globalAlpha=1;
     // Marqueurs des royaumes : pas de nombres posés sur chaque case.
-    const labels=['VOUS','ROUGE','ORANGE'];
-    const sumsX=[0,0,0],sumsY=[0,0,0],ns=[0,0,0];
-    for(let i=0;i<TOTAL;i++){
-      const owner=tiles[i];if(owner<0)continue;
-      sumsX[owner]+=i%COLS+.5;sumsY[owner]+=Math.floor(i/COLS)+.5;ns[owner]++;
-    }
-    for(let owner=0;owner<3;owner++){
-      if(!ns[owner])continue;
-      const x=sumsX[owner]/ns[owner]*dx,y=sumsY[owner]/ns[owner]*dy;
-      const r=15/zoom;
-      ctx.fillStyle='#0c1b2ad9';ctx.strokeStyle=['#9bdfff','#ffc0c8','#ffe2a5'][owner];ctx.lineWidth=1.5/zoom;
+    for(let owner=0;owner<ACTIVE_REALMS;owner++){
+      if(!territoryCounts[owner])continue;
+      const x=sumsX[owner]/territoryCounts[owner]*dx,y=sumsY[owner]/territoryCounts[owner]*dy;
+      const r=zoom>1.8?10/zoom:8/zoom;
+      ctx.fillStyle='#0c1b2ad9';ctx.strokeStyle=rgb[owner];ctx.lineWidth=1.6/zoom;
       ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
-      ctx.font='bold '+(owner===0?9/zoom:8/zoom)+'px system-ui';ctx.fillText(labels[owner],x,y);
+      ctx.font='bold '+(9/zoom)+'px system-ui';ctx.fillText(owner===0?'★':String(owner+1),x,y);
     }
     ctx.restore();
   }
@@ -258,14 +326,19 @@
   }
   function startCampaign(owner,target,pct){
     if(!running||count(owner)===0)return false;
-    const targetOwner=tiles[target];
-    if(targetOwner===owner){if(owner===0)message('Touchez une zone <strong>hors de votre royaume</strong>.');return false;}
+    const focus=tiles[target],aimOwner=focus===owner?-1:focus;
+    if(aimOwner<0&&!frontier(owner).some(i=>tiles[i]<0)){
+      if(owner===0)message('Aucun territoire neutre accessible. Touchez un royaume ennemi.');
+      return false;
+    }
+    if(aimOwner>=0&&!count(aimOwner))return false;
     endCampaign(owner);
     const committed=maximumCommit(owner,pct);
-    if(committed<2){if(owner===0)message('Armée trop petite. Attendez que votre royaume produise des unités.');return false;}
+    if(committed<2){if(owner===0)message('Armée insuffisante : attendez la production d’unités.');return false;}
     armies[owner]-=committed;
-    campaigns[owner]={budget:committed,initial:committed,aim:target,aimOwner:targetOwner,captured:0,wait:0};
-    if(owner===0)message('<strong>Offensive lancée !</strong> La ligne de front avancera automatiquement sur plusieurs zones. Touchez ailleurs pour changer de direction.');
+    campaigns[owner]={budget:committed,initial:committed,aimOwner,captured:0,wait:0,cursor:0};
+    if(owner===0)message(aimOwner<0?'<strong>Expansion générale !</strong> Vos frontières avancent vers les zones neutres.':
+      '<strong>Cible : '+armyName[aimOwner]+'</strong> Toute votre ligne de front attaque ce royaume, ou s’en approche par les zones neutres.');
     render();return true;
   }
   function costs(owner,target){
@@ -274,85 +347,101 @@
     return Math.max(3,Math.min(12,Math.ceil(3+density*.65)))/AREA;
   }
   function selectWave(owner,c){
-    const edges=frontier(owner);
-    if(!edges.length)return [];
-    const aim=centers(c.aim),focus=c.aimOwner;
-    // Tous les points de contact avec le royaume ciblé peuvent avancer ensemble.
-    // Quand aucun ennemi n'est limitrophe, le front traverse les zones neutres.
-    let eligible=edges.filter(i=>tiles[i]===focus);
-    if(eligible.length===0){eligible=edges.filter(i=>tiles[i]===-1);}
-    if(eligible.length===0)eligible=edges;
-    const closeness=i=>{const p=centers(i);return Math.hypot(p.x-aim.x,p.y-aim.y);};
-    eligible.sort((a,b)=>closeness(a)-closeness(b));
-    // Large bande : le front progresse en plusieurs points, pas par un clic/case.
-    const width=DETAIL*Math.max(3,Math.min(20,Math.round(Math.sqrt(c.initial)*1.45)));
-    // Élargissement après chaque vague, sans franchir de zone non adjacente.
-    const take=Math.min(eligible.length,width);
-    return eligible.slice(0,take);
+    const edge=frontier(owner);if(!edge.length)return [];
+    let eligible;
+    if(c.aimOwner<0)eligible=edge.filter(i=>tiles[i]<0);
+    else{
+      eligible=edge.filter(i=>tiles[i]===c.aimOwner);
+      if(!eligible.length){
+        eligible=edge.filter(i=>tiles[i]<0);
+        if(eligible.length&&count(c.aimOwner)>0){
+          const px=sumsX[c.aimOwner]/count(c.aimOwner),py=sumsY[c.aimOwner]/count(c.aimOwner);
+          eligible.sort((a,b)=>{
+            const ax=a%COLS-px,ay=(a/COLS|0)-py,bx=b%COLS-px,by=(b/COLS|0)-py;
+            return ax*ax+ay*ay-bx*bx-by*by||a-b;
+          });
+          eligible.length=Math.min(eligible.length,Math.max(150,Math.ceil(eligible.length*.3)));
+        }
+      }
+    }
+    if(!eligible.length)return [];
+    const width=Math.min(220,Math.max(40,Math.round(Math.sqrt(c.initial)*8)));
+    const take=Math.min(eligible.length,width),result=[];
+    // Progression espacée sur toute la largeur de front.
+    const start=c.cursor%eligible.length;
+    for(let k=0;k<take;k++){
+      const slot=(start+Math.floor(k*eligible.length/take))%eligible.length;
+      result.push(eligible[slot]);
+    }
+    c.cursor=(c.cursor+Math.max(1,Math.floor(eligible.length/Math.max(1,take))))%eligible.length;
+    return result;
   }
   function wave(owner){
-    const c=campaigns[owner];if(!c||!running||!count(owner)){endCampaign(owner);return;}
+    const c=campaigns[owner];if(!c||!running)return;
+    if(!count(owner)||(c.aimOwner>=0&&!count(c.aimOwner))){endCampaign(owner);return;}
     const proposed=selectWave(owner,c);
     if(!proposed.length){endCampaign(owner);return;}
     let gained=0;
     for(const target of proposed){
+      const defender=tiles[target];
+      if(defender===owner)continue;
+      if(c.aimOwner<0&&defender>=0)continue;
+      if(c.aimOwner>=0&&defender>=0&&defender!==c.aimOwner)continue;
       const guard=costs(owner,target);
       if(c.budget<guard)break;
-      const defender=tiles[target];
       c.budget-=guard;
-      if(defender>=0){
-        territoryCounts[defender]--;
-        armies[defender]=Math.max(0,armies[defender]-Math.max(1/AREA,guard*.65));
-      }
-      territoryCounts[owner]++;
-      tiles[target]=owner;
-      // Feedback visuel échantillonné pour ne pas surcharger le canvas sur iPhone.
-      if(target%DETAIL===0)flashing.set(target,performance.now());
-      gained++;c.captured++;
-      if(defender>=0 && count(defender)===0){endCampaign(defender);armies[defender]=0;}
+      if(defender>=0)armies[defender]=Math.max(0,armies[defender]-Math.max(1/AREA,guard*.65));
+      changeTile(target,owner);
+      if(target%(DETAIL*2)===0)flashing.set(target,performance.now());
+      gained++;c.captured++;capturesSinceCleanup++;
+      if(defender>=0&&!count(defender)){endCampaign(defender);armies[defender]=0;}
     }
-    c.wait=gained===0?c.wait+1:0;
-    if(c.budget<2/AREA||c.wait>=2||!frontier(owner).length)endCampaign(owner);
-    if(owner===0 && gained>0 && (!campaigns[owner]||c.captured%(22*AREA)===0)){
+    c.wait=gained?0:c.wait+1;
+    if(c.budget<2/AREA||c.wait>=3||!frontiers[owner].size)endCampaign(owner);
+    if(owner===0&&gained>0&&(!campaigns[owner]||c.captured%(24*AREA)===0))
       message('<strong>Le front avance !</strong> '+(c.captured*100/TOTAL).toFixed(1)+' % de la carte gagnée pendant cette offensive.');
-    }
     checkEnd();
   }
   function tickWaves(){
     if(!running)return;
-    for(let owner=0;owner<3;owner++)wave(owner);
+    for(let owner=0;owner<ACTIVE_REALMS;owner++)wave(owner);
+    waveCount++;
+    if(waveCount%24===0&&capturesSinceCleanup>0){cleanupFragments();capturesSinceCleanup=0;}
     render();
   }
   function bot(owner){
-    if(!running||campaigns[owner]||!count(owner)||armies[owner]<20)return;
-    const edges=frontier(owner);
-    if(!edges.length)return;
-    const neutral=edges.filter(i=>tiles[i]<0);
-    // IA modérée : expansion neutre en priorité, attaques adverses moins fréquentes.
-    const list=neutral.length&&Math.random()<.83?neutral:edges;
-    const target=list[Math.floor(Math.random()*list.length)];
-    startCampaign(owner,target,Math.floor(20+Math.random()*21));
+    if(!running||campaigns[owner]||!count(owner)||armies[owner]<22)return;
+    const edge=frontier(owner);if(!edge.length)return;
+    const neutrals=edge.filter(i=>tiles[i]<0);
+    const enemies=Array.from(new Set(edge.map(i=>tiles[i]).filter(i=>i>=0&&i!==owner)));
+    const danger=enemies.filter(other=>count(other)>0&&armies[owner]>Math.max(35,armies[other]*.68));
+    const fight=danger.length&&(!neutrals.length||Math.random()<.28);
+    if(fight){
+      danger.sort((a,b)=>armies[a]-armies[b]);
+      const target=edge.find(i=>tiles[i]===danger[0]);
+      startCampaign(owner,target,Math.min(65,Math.max(22,Math.floor(armies[owner]*.23))));
+    }else if(neutrals.length)startCampaign(owner,neutrals[0],35+Math.floor(Math.random()*18));
   }
   function tick(){
     if(!running)return;
-    for(let i=0;i<3;i++)if(count(i))armies[i]=Math.min(MAX_ARMY,armies[i]+prod(i));
+    for(let i=0;i<ACTIVE_REALMS;i++)if(count(i))armies[i]=Math.min(MAX_ARMY,armies[i]+prod(i));
     timeLeft=Math.max(0,timeLeft-1);
     checkEnd();render();
   }
   function checkEnd(){
     if(!running)return;
-    if(timeLeft<=0||count(0)===0||[1,2].every(owner=>count(owner)===0))finish();
+    if(timeLeft<=0||count(0)===0||Array.from({length:ACTIVE_REALMS-1},(_,k)=>k+1).every(owner=>!count(owner)))finish();
   }
   function finish(){
     if(!running)return;
     running=false;clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);
-    for(let i=0;i<3;i++)endCampaign(i);
-    const scores=[0,1,2].map(count),max=Math.max(...scores);
+    for(let i=0;i<ACTIVE_REALMS;i++)endCampaign(i);
+    const scores=territoryCounts.slice(),max=Math.max(...scores);
     const winners=scores.map((v,i)=>v===max?i:-1).filter(i=>i>=0);
     const victory=winners.length===1&&winners[0]===0;
     $('resultSymbol').textContent=victory?'🏆':winners.length>1?'⚖️':'⚔️';
     $('resultTitle').textContent=victory?'Victoire !':winners.length>1?'Égalité':'Partie terminée';
-    $('resultText').textContent=`Territoire : ${Math.round(scores[0]*100/TOTAL)} % pour vous, ${Math.round(scores[1]*100/TOTAL)} % pour Rouge et ${Math.round(scores[2]*100/TOTAL)} % pour Orange. ${victory?'Votre royaume domine la carte !':'Relancez une partie et choisissez une nouvelle direction de conquête.'}`;
+    $('resultText').textContent='Territoires : '+scores.map((n,i)=>armyName[i]+' '+(n*100/TOTAL).toFixed(1)+' %').join(' · ')+'. '+(victory?'Votre royaume domine la carte !':'Relancez une partie pour tenter une nouvelle stratégie.');
     $('result').classList.remove('hidden');render();
   }
   function gridAt(clientX,clientY){
@@ -433,20 +522,23 @@
   window.addEventListener('pagehide',()=>{clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);});
   function create(){
     clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);
-    startArmyPositions();armies=[180,155,155];campaigns=[null,null,null];flashing.clear();
+    $('scoreboard').innerHTML=scoreMarkup();
+    startArmyPositions();armies=[220,180,180,180,180,180];
+    campaigns=Array(ACTIVE_REALMS).fill(null);flashing.clear();
+    waveCount=0;capturesSinceCleanup=0;
     running=true;timeLeft=GAME_LENGTH;percent=50;touched=null;lastMessage='';
     pointers.clear();pinch=null;preventTapAfterPinch=false;zoom=1;offsetX=0;offsetY=0;
     $('zoomLevel').textContent='100 %';$('zoomOut').disabled=true;$('zoomIn').disabled=false;
     $('result').classList.add('hidden');
-    message('<strong>Front continu :</strong> touchez une zone à conquérir. Votre territoire s’étend automatiquement en une ligne de front.');
+    message('<strong>Conquête globale :</strong> touchez le bleu pour prendre les terres neutres, ou une couleur ennemie pour l’attaquer n’importe où sur la carte.');
     timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,WAVE_MS);
-    botTimer=setInterval(()=>{bot(1);bot(2);render();},2600);
+    botTimer=setInterval(()=>{for(let i=1;i<ACTIVE_REALMS;i++)bot(i);render();},2100);
     resize();render();
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({tiles:[...tiles],counts:[...territoryCounts],size:[COLS,ROWS],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),percent,timeLeft,running}),
-      touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),step:tickWaves,tick,stop:endCampaign};
+    window.__borderBlitzTest={getState:()=>({tiles:[...tiles],counts:[...territoryCounts],size:[COLS,ROWS],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),percent,timeLeft,running}),
+      touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),step:tickWaves,tick,bot,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish};
   }
   create();
 })();
