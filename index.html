@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V2.0</title>
+  <title>Border Blitz — Prototype V2.1</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -60,7 +60,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 .war-label{display:block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#cce3f1}
 .war-label strong{display:inline;margin-right:6px;color:#fff}
 .war-stop{background:#2b5574;border:1px solid #648fae;border-radius:7px;padding:5px 7px;font-size:11px;font-weight:850;white-space:nowrap}.war-stop:disabled{opacity:.4}
-.campaign-list{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}.campaign-list:empty{display:none}
+.campaign-list{display:flex;align-items:center;gap:5px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;height:33px;min-height:33px;max-height:33px;flex:0 0 33px}
+.campaign-list:empty{display:flex}
+.war-row{height:32px;min-height:32px;max-height:32px;flex:0 0 32px}
+.campaign-item{height:30px;min-height:30px;max-height:30px}
 .campaign-item{display:flex;align-items:center;gap:5px;flex:0 0 auto;padding:2px 5px;border:1px solid #537c9b;border-radius:7px;background:#244763;font-size:10px}
 .campaign-item button{height:25px;min-width:25px;padding:0 3px;background:#94475a;border-radius:5px;font-weight:900}
 .hint{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
@@ -74,7 +77,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V2.0 • GRAND ÉCRAN</span></div><div class="top-buttons"><button class="outline" id="settingsToggle" type="button" aria-label="Réglages de carte" aria-expanded="false">⚙</button><button class="outline" id="restart" aria-label="Nouvelle partie">↻</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V2.1 • PROPORTIONS FIXES</span></div><div class="top-buttons"><button class="outline" id="settingsToggle" type="button" aria-label="Réglages de carte" aria-expanded="false">⚙</button><button class="outline" id="restart" aria-label="Nouvelle partie">↻</button></div></header>
   <section class="world-selector" id="worldSettings" aria-label="Mode de génération de carte" hidden>
     <label for="mapMode">CARTE</label>
     <select id="mapMode" aria-label="Mode de jeu"><option value="small">1 à 10 joueurs</option><option value="50" selected>50 joueurs</option><option value="200">200 joueurs</option></select>
@@ -122,6 +125,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let capitals=Array(ACTIVE_REALMS).fill(-1);
   let percent=50, timeLeft=GAME_LENGTH, running=false, timer=null, wavesTimer=null, botTimer=null;
   let flashing=new Map(), touched=null, mapW=370, mapH=330, lastMessage='', waveCount=0, capturesSinceCleanup=0;
+  let worldW=370,worldH=370*ROWS/COLS; // mêmes pixels par cellule sur les deux axes
   let totalLand=0, coastPath=new Path2D();
   let lastBattleReport=null;
   let zoom=1, offsetX=0, offsetY=0, autoFollow=true, cameraTarget=null;
@@ -586,8 +590,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     renderPower();renderWar();
   }
   function clampCamera(){
-    offsetX=Math.min(0,Math.max(mapW*(1-zoom),offsetX));
-    offsetY=Math.min(0,Math.max(mapH*(1-zoom),offsetY));
+    const width=worldW*zoom,height=worldH*zoom;
+    offsetX=width<=mapW?(mapW-width)/2:Math.min(0,Math.max(mapW-width,offsetX));
+    offsetY=height<=mapH?(mapH-height)/2:Math.min(0,Math.max(mapH-height,offsetY));
   }
   function setZoom(next,cx=mapW/2,cy=mapH/2){
     // Un zoom manuel suspend la caméra, sinon elle annulait la commande suivante.
@@ -609,9 +614,12 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(!force&&waveCount%(ACTIVE_REALMS>=200?5:4)!==0)return;
     if(playerBoundsDirty||!playerBounds)recalcPlayerBounds();
     const b=playerBounds;if(!b)return;
-    const span=Math.max((b.maxX-b.minX+1)/COLS,(b.maxY-b.minY+1)/ROWS);
-    cameraTarget={zoom:Math.max(1,Math.min(MAX_ZOOM,.65/Math.max(.01,span))),
-      x:(b.minX+b.maxX+1)*.5/COLS*mapW,y:(b.minY+b.maxY+1)*.5/ROWS*mapH};
+    const bboxWidth=(b.maxX-b.minX+1)*worldW/COLS;
+    const bboxHeight=(b.maxY-b.minY+1)*worldH/ROWS;
+    const desired=Math.min(.65*mapW/Math.max(.1,bboxWidth),.65*mapH/Math.max(.1,bboxHeight));
+    cameraTarget={zoom:Math.max(1,Math.min(MAX_ZOOM,desired)),
+      x:(b.minX+b.maxX+1)*.5/COLS*worldW,
+      y:(b.minY+b.maxY+1)*.5/ROWS*worldH};
   }
   function cameraStep(force=false,dt=33){
     if(!autoFollow||!cameraTarget)return false;
@@ -643,34 +651,39 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   function viewWholeMap(){
     autoFollow=false;cameraTarget=null;zoom=1;offsetX=0;offsetY=0;
-    updateCameraButtons();draw();
+    clampCamera();updateCameraButtons();draw();
   }
   function resumeFollow(){
     autoFollow=true;followPlayer(true);updateCameraButtons();draw();
   }
   function resize(){
-    const box=canvas.getBoundingClientRect(),beforeW=mapW,beforeH=mapH;
+    const box=canvas.getBoundingClientRect();
+    const oldW=worldW,oldH=worldH,oldScreenW=mapW,oldScreenH=mapH;
+    const focusX=(oldScreenW/2-offsetX)/Math.max(1,zoom*oldW);
+    const focusY=(oldScreenH/2-offsetY)/Math.max(1,zoom*oldH);
     mapW=box.width||370;mapH=box.height||330;
-    offsetX*=mapW/beforeW;offsetY*=mapH/beforeH;
+    const unit=Math.min(mapW/COLS,mapH/ROWS);
+    worldW=COLS*unit;worldH=ROWS*unit;
+    offsetX=mapW/2-focusX*worldW*zoom;
+    offsetY=mapH/2-focusY*worldH*zoom;
     clampCamera();
     const dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.round(mapW*dpr);canvas.height=Math.round(mapH*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
     if(autoFollow){
       followPlayer(true);
-      // Premier cadre correct dès l'ouverture; ensuite animation progressive.
       if(!lastCameraFrame)cameraStep(true);
     }
     updateCameraButtons();draw();
   }
   function draw(){
-    const dx=mapW/COLS,dy=mapH/ROWS;
+    const dx=worldW/COLS,dy=worldH/ROWS;
     ctx.save();ctx.clearRect(0,0,mapW,mapH);
     ctx.fillStyle='#17394c';ctx.fillRect(0,0,mapW,mapH);
     if(borderDirtyAll||borderDirty.size)refreshOutlines();
     uploadDirtyPixels();
     ctx.translate(offsetX,offsetY);ctx.scale(zoom,zoom);
-    ctx.imageSmoothingEnabled=false;ctx.drawImage(layer,0,0,mapW,mapH);
+    ctx.imageSmoothingEnabled=false;ctx.drawImage(layer,0,0,worldW,worldH);
     ctx.save();ctx.scale(dx,dy);
     ctx.strokeStyle='#d1e1d8';ctx.lineWidth=1.25/(Math.min(dx,dy)*zoom);
     ctx.stroke(coastPath);ctx.restore();
@@ -1004,7 +1017,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function gridAt(clientX,clientY){
     const box=canvas.getBoundingClientRect();
     const mx=(clientX-box.left-offsetX)/zoom,my=(clientY-box.top-offsetY)/zoom;
-    const x=Math.floor(mx/mapW*COLS),y=Math.floor(my/mapH*ROWS);
+    const x=Math.floor(mx/worldW*COLS),y=Math.floor(my/worldH*ROWS);
     return inside(x,y)?index(x,y):null;
   }
   // Les attaques restent à un seul toucher ; les déplacements servent à explorer quand on zoome.
@@ -1117,8 +1130,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
-      touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
+    window.__borderBlitzTest={getState:()=>({seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+      touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
   create();
