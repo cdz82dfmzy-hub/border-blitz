@@ -6,30 +6,30 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V0.1</title>
+  <title>Border Blitz — Prototype V0.2</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#3a4b5c; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
-    body{touch-action:manipulation; -webkit-tap-highlight-color:transparent} .app{max-width:680px;min-height:100dvh;margin:0 auto;padding:max(15px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+    body{touch-action:manipulation; -webkit-tap-highlight-color:transparent} .app{max-width:680px;min-height:100dvh;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) 14px max(10px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:9px}
     .headline{display:flex;align-items:center;justify-content:space-between;gap:10px} .logo{font-weight:900;letter-spacing:.07em;font-size:clamp(20px,5vw,29px)} .logo em{font-style:normal;color:#67c6ff} .version{display:block;font-size:10px;letter-spacing:.14em;color:var(--muted);font-weight:650;margin-top:2px}
     button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer;border:0} .outline{background:#1b2c40;border:1px solid #3d5267;border-radius:11px;padding:10px 13px;font-weight:700;font-size:13px}
-    .scoreboard{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.score{position:relative;overflow:hidden;padding:11px 10px 12px;border-radius:13px;border:1px solid #2e4154;background:linear-gradient(145deg,#1c2a3c,#0e1c2d)} .score strong{display:block;font-size:clamp(19px,4.8vw,26px);margin:1px 0}.score small{font-size:11px;font-weight:700;color:#bfd0e3}.score .bar{position:absolute;bottom:0;left:0;height:3px;transition:width .2s} .score.player .bar{background:var(--blue)} .score.red .bar{background:var(--red)} .score.orange .bar{background:var(--amber)}
-    .board-card{padding:10px;border:1px solid #2b4057;background:linear-gradient(155deg,#132239,#0d1829);border-radius:20px;box-shadow:0 18px 52px #0005}
-    .board-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 6px 12px}.board-head b{font-size:13px;color:#cad9eb}.clock{font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;color:#bfe8ff}
-    .board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:clamp(3px,1vw,6px);aspect-ratio:1;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+    .scoreboard{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.score{position:relative;overflow:hidden;padding:7px 9px 8px;border-radius:13px;border:1px solid #2e4154;background:linear-gradient(145deg,#1c2a3c,#0e1c2d)} .score strong{display:block;font-size:clamp(19px,4.8vw,26px);margin:0}.score small{font-size:11px;font-weight:700;color:#bfd0e3}.score .bar{position:absolute;bottom:0;left:0;height:3px;transition:width .2s} .score.player .bar{background:var(--blue)} .score.red .bar{background:var(--red)} .score.orange .bar{background:var(--amber)}
+    .board-card{padding:8px;border:1px solid #2b4057;background:linear-gradient(155deg,#132239,#0d1829);border-radius:20px;box-shadow:0 18px 52px #0005}
+    .board-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 6px 8px}.board-head b{font-size:13px;color:#cad9eb}.clock{font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;color:#bfe8ff}
+    .board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:clamp(3px,1vw,6px);aspect-ratio:1;user-select:none;-webkit-user-select:none;touch-action:none}
     .cell{width:100%;min-width:0;aspect-ratio:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;border-radius:clamp(5px,1.8vw,11px);border:1px solid #677b8d35;background:linear-gradient(145deg,#52616f,#303f50);box-shadow:inset 0 1px 1px #ffffff13,0 1px 3px #0005;transition:filter .12s,outline-color .12s,transform .12s;position:relative;padding:0;}
     .cell .troops{font-size:clamp(9px,3vw,16px);font-variant-numeric:tabular-nums;line-height:1;font-weight:850;color:#fff;text-shadow:0 1px 2px #0008} .cell .star{font-size:clamp(7px,2.5vw,13px);color:#ffe1a1;line-height:1;text-shadow:0 1px 3px #17130b} .cell.player{background:linear-gradient(145deg,#3fbdff,#116db4);border-color:#9fe4ff70}.cell.red{background:linear-gradient(145deg,#ff8790,#ac384b);border-color:#ffc9c36e}.cell.orange{background:linear-gradient(145deg,#f6c476,#b27728);border-color:#ffe1a16e}.cell.selected{outline:3px solid #d8f4ff;outline-offset:1px;transform:scale(.96);z-index:2}.cell.target{box-shadow:inset 0 0 0 2px #cdefff84,0 0 13px #bfe8ff38}.cell:active{filter:brightness(1.25)}
-    .legend{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:11px;color:var(--muted)} .dot{width:9px;height:9px;display:inline-block;border-radius:3px;margin-right:5px}.legend b{color:#f9dca0}
-    .actions{border-radius:15px;border:1px solid #263a51;background:#101e30;padding:13px;display:flex;flex-direction:column;gap:12px}.actions-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.actions-top strong{font-size:13px}.actions-top span{font-size:12px;color:var(--muted)}
-    .ratios{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ratio{background:#1f3045;border:1px solid #37516b;border-radius:11px;padding:11px;font-size:14px;font-weight:850}.ratio.active{background:#1c537d;border-color:#6dc5ff;color:#e8f8ff}
-    .hint{font-size:13px;line-height:1.45;color:#b9cbde;min-height:37px;margin:0}.hint strong{color:#eef6ff}.footer{font-size:11px;color:#8098b4;text-align:center;padding-bottom:5px}
+    .legend{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)} .dot{width:9px;height:9px;display:inline-block;border-radius:3px;margin-right:5px}.legend b{color:#f9dca0}
+    .actions{border-radius:15px;border:1px solid #263a51;background:#101e30;padding:10px;display:flex;flex-direction:column;gap:9px}.actions-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.actions-top strong{font-size:13px}.actions-top span{font-size:12px;color:var(--muted)}
+    .power-panel{display:flex;flex-direction:column;gap:5px}.power-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.power-heading output{font-size:24px;font-weight:900;color:#86d4ff;font-variant-numeric:tabular-nums}.power-adjust{display:flex;align-items:center;gap:9px}.power-step{flex:0 0 38px;height:38px;border-radius:11px;background:#1f344b;border:1px solid #46637d;font-size:23px;font-weight:700}.power-step:active{background:#28608e}.power-slider{flex:1;min-width:0;width:100%;height:40px;margin:0;cursor:pointer;appearance:none;-webkit-appearance:none;background:transparent;touch-action:pan-x}.power-slider::-webkit-slider-runnable-track{height:11px;border-radius:99px;background:linear-gradient(90deg,#49bbff 0%,#49bbff var(--fill),#354a60 var(--fill),#354a60 100%)}.power-slider::-moz-range-track{height:11px;border-radius:99px;background:#354a60}.power-slider::-moz-range-progress{height:11px;border-radius:99px;background:#49bbff}.power-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:29px;height:29px;margin-top:-9px;border:3px solid #e7f8ff;border-radius:50%;background:#1786d0;box-shadow:0 2px 9px #0008}.power-slider::-moz-range-thumb{width:24px;height:24px;border:3px solid #e7f8ff;border-radius:50%;background:#1786d0}.power-slider:focus-visible,.power-step:focus-visible{outline:3px solid #a4e3ff;outline-offset:3px}.power-extremes{display:flex;justify-content:space-between;color:#91adc7;font-size:11px;padding:0 48px;margin-top:-6px}.power-preview{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;border-radius:10px;background:#1a2e45;padding:7px 9px;font-size:12px;color:#b9d5eb}.power-preview strong{color:#f2faff;font-size:14px;font-variant-numeric:tabular-nums}.cell.drag-source{outline:3px solid #ffffff;outline-offset:1px;transform:scale(.96);z-index:3}.cell.drag-hover{box-shadow:inset 0 0 0 3px #fff8b2,0 0 16px #ffe4a075;z-index:3}
+    .hint{font-size:12px;line-height:1.4;color:#b9cbde;min-height:34px;margin:0}.hint strong{color:#eef6ff}.footer{font-size:11px;color:#8098b4;text-align:center;padding-bottom:5px}
     .result{position:fixed;inset:0;background:#030911c9;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.result.hidden{display:none}.modal{width:min(100%,370px);padding:26px;border:1px solid #4b667e;border-radius:20px;background:linear-gradient(155deg,#21354b,#101b2b);text-align:center;box-shadow:0 30px 90px #000a}.modal .symbol{font-size:38px}.modal h2{font-size:27px;margin:10px 0}.modal p{line-height:1.5;color:#c3d4e6;font-size:14px}.primary{padding:13px 26px;border-radius:12px;background:#239ceb;color:#fff;font-weight:850;width:100%;margin-top:9px}
     @media (min-height:800px){.app{justify-content:space-between}.board-card{margin:auto 0}}
   </style>
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.1 • SOLO HORS LIGNE</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.2 • SOLO HORS LIGNE</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
   <section class="scoreboard" aria-label="Territoires possédés">
     <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small>régions</small><div class="bar" id="bar0"></div></div>
     <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small>régions</small><div class="bar" id="bar1"></div></div>
@@ -40,7 +40,7 @@
     <div class="board" id="board" role="group" aria-label="Carte de 64 régions"></div>
     <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span><i class="dot" style="background:#35a4f1"></i>Vous</span><span><b>★</b> Région bonus : +2 unités</span></div>
   </section>
-  <section class="actions"><div class="actions-top"><strong>UNITÉS ENVOYÉES</strong><span>Choisissez une proportion</span></div><div class="ratios" role="group" aria-label="Pourcentage des unités à envoyer"><button class="ratio" data-ratio="0.25">25 %</button><button class="ratio active" data-ratio="0.5">50 %</button><button class="ratio" data-ratio="1">100 %</button></div><p class="hint" id="hint" aria-live="polite"><strong>À vous de jouer !</strong> Touchez une case bleue puis une case voisine pour attaquer ou renforcer.</p></section>
+  <section class="actions"><div class="power-panel"><div class="power-heading"><strong>PUISSANCE D’ATTAQUE</strong><output id="powerValue" for="powerSlider">50 %</output></div><div class="power-adjust"><button type="button" class="power-step" id="powerMinus" aria-label="Diminuer la puissance de 1 %">−</button><input class="power-slider" id="powerSlider" type="range" min="1" max="100" step="1" value="50" aria-label="Puissance d'attaque, de 1 à 100 pour cent"><button type="button" class="power-step" id="powerPlus" aria-label="Augmenter la puissance de 1 %">+</button></div><div class="power-extremes"><span>1 %</span><span>100 %</span></div><div class="power-preview" id="powerPreview" aria-live="off"><span id="previewSource">Sélectionne une région bleue</span><span id="previewUnits">Unités envoyées : <strong>—</strong></span></div></div><p class="hint" id="hint" aria-live="polite"><strong>À vous de jouer !</strong> Touchez une région bleue puis une voisine, ou glissez directement de l'une vers l'autre.</p></section>
   <div class="footer">La carte produit des unités automatiquement. Gagnez en contrôlant le plus de régions après 2 minutes.</div>
 </main>
 <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="modal"><div class="symbol" id="resultSymbol">🏆</div><h2 id="resultTitle">Partie terminée</h2><p id="resultText"></p><button class="primary" id="playAgain">Nouvelle partie</button></div></div>
@@ -52,8 +52,25 @@
   const hint=document.getElementById('hint');
   const clock=document.getElementById('clock');
   const result=document.getElementById('result');
-  const ratios=[...document.querySelectorAll('[data-ratio]')];
-  let regions=[], selected=null, ratio=0.5, timeLeft=GAME_LENGTH, running=false, interval=null, botTimer=null, elapsedTicks=0;
+  const powerSlider=document.getElementById('powerSlider');
+  const powerValue=document.getElementById('powerValue');
+  const previewSource=document.getElementById('previewSource');
+  const previewUnits=document.getElementById('previewUnits');
+  let regions=[], selected=null, percent=50, drag=null, timeLeft=GAME_LENGTH, running=false, interval=null, botTimer=null, elapsedTicks=0;
+  const unitsFor=(troops,pct)=>troops<2?0:Math.min(troops-1,Math.max(1,Math.floor(troops*pct/100)));
+  function powerUI(){
+    powerSlider.value=String(percent);powerValue.textContent=percent+' %';
+    powerSlider.style.setProperty('--fill',percent+'%');
+    const from=drag && regions[drag.from]?.owner===0 ? drag.from : selected;
+    if(from===null || from===undefined || regions[from]?.owner!==0){
+      previewSource.textContent='Sélectionne une région bleue';
+      previewUnits.innerHTML='Unités envoyées : <strong>—</strong>';
+    }else{
+      const total=regions[from].troops, qty=unitsFor(total,percent);
+      previewSource.textContent='Région '+(from+1)+' · '+total+' unités';
+      previewUnits.innerHTML='Envoyées : <strong>'+qty+'</strong> · Restantes : <strong>'+(total-qty)+'</strong>';
+    }
+  }
   const initialSets=[ [9,10,17,18], [45,46,53,54], [41,42,49,50] ];
   const neighbors=i=>[ i%SIDE>0?i-1:-1, i%SIDE<SIDE-1?i+1:-1, i>=SIDE?i-SIDE:-1, i<TOTAL-SIDE?i+SIDE:-1].filter(v=>v>=0);
   const count=who=>regions.filter(r=>r.owner===who).length;
@@ -64,9 +81,9 @@
     initialSets.forEach((set,player)=>set.forEach(i=>{regions[i].owner=player;regions[i].troops=20+Math.floor(Math.random()*9)}));
     for (const r of regions) if(r.owner<0 && r.bonus) r.troops+=7;
     board.innerHTML='';
-    regions.forEach((r,i)=>{const el=document.createElement('button');el.className='cell';el.type='button';el.addEventListener('click',()=>tap(i));board.appendChild(el)});
-    selected=null;timeLeft=GAME_LENGTH; elapsedTicks=0;running=true;result.classList.add('hidden');
-    msg('<strong>À vous de jouer !</strong> Touchez une case bleue, puis une case voisine pour attaquer ou renforcer.');
+    regions.forEach((r,i)=>{const el=document.createElement('button');el.className='cell';el.type='button';el.dataset.index=String(i);el.addEventListener('click',e=>{if(e.detail===0)tap(i)});board.appendChild(el)});
+    selected=null;drag=null;timeLeft=GAME_LENGTH; elapsedTicks=0;running=true;result.classList.add('hidden');
+    msg('<strong>À vous de jouer !</strong> Touchez une région bleue puis une voisine, ou glissez entre deux régions voisines.');
     update(); clearInterval(interval);clearInterval(botTimer);
     interval=setInterval(tick,1000);botTimer=setInterval(()=>{if(running){bot(1);bot(2);update();checkElimination()}},900);
   }
@@ -75,18 +92,21 @@
       const r=regions[i];el.className='cell '+(r.owner===0?'player':r.owner===1?'red':r.owner===2?'orange':'neutral');
       if(i===selected)el.classList.add('selected');
       if(selected!==null && neighbors(selected).includes(i))el.classList.add('target');
+      if(drag?.from===i)el.classList.add('drag-source');
+      if(drag?.hover===i && drag.hover!==drag.from && neighbors(drag.from).includes(i))el.classList.add('drag-hover');
       el.innerHTML=(r.bonus?'<span class="star">★</span>':'')+'<span class="troops">'+r.troops+'</span>';
       el.setAttribute('aria-label',`Région ${i+1}, ${['vous','rouge','orange'][r.owner]||'neutre'}, ${r.troops} unités${r.bonus?', bonus':''}`);
       el.setAttribute('aria-pressed',String(i===selected));
     });
     for(let i=0;i<3;i++){const n=count(i);document.getElementById('score'+i).textContent=n;document.getElementById('bar'+i).style.width=100*n/TOTAL+'%'}
     clock.textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');
+    powerUI();
   }
   function move(from,to,pct){
     if(!neighbors(from).includes(to))return false;
     const origin=regions[from],target=regions[to];
     if(origin.owner<0)return false;
-    const units=Math.min(origin.troops-1, Math.floor(origin.troops*pct));
+    const units=unitsFor(origin.troops,pct*100);
     if(units<=0)return false;
     origin.troops-=units;
     if(target.owner===origin.owner)target.troops=Math.min(199,target.troops+units);
@@ -103,13 +123,52 @@
     }else if(i===selected){selected=null;msg('Sélection annulée. Choisissez une région bleue.');}
     else if(r.owner===0 && !neighbors(selected).includes(i)){selected=i;msg('Nouvelle région sélectionnée : <strong>'+r.troops+' unités</strong>.');}
     else if(neighbors(selected).includes(i)){
-      const ok=move(selected,i,ratio);
+      const ok=move(selected,i,percent/100);
       selected=null;
       msg(ok?'<strong>Mouvement effectué !</strong> Continuez votre expansion.':'Pas assez d’unités. Attendez que votre région se renforce.');
       checkElimination();
     } else msg('Cible trop éloignée : sélectionnez <strong>une case adjacente</strong>.');
     update();
   }
+  // Deux commandes coexistantes : toucher-deux-fois et glisser-relâcher.
+  // Pointer Events gèrent souris, stylet et écran tactile avec une seule logique.
+  function cellAt(x,y){
+    const el=document.elementFromPoint(x,y)?.closest('.cell');
+    return el && el.parentElement===board ? Number(el.dataset.index) : null;
+  }
+  board.addEventListener('pointerdown',e=>{
+    if(!running || (e.pointerType==='mouse' && e.button!==0) || drag)return;
+    const el=e.target.closest('.cell');if(!el || el.parentElement!==board)return;
+    drag={id:e.pointerId,from:Number(el.dataset.index),x:e.clientX,y:e.clientY,moved:false,hover:null};
+    update();
+  });
+  window.addEventListener('pointermove',e=>{
+    if(!drag || e.pointerId!==drag.id)return;
+    if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>12)drag.moved=true;
+    if(!drag.moved)return;
+    const hover=cellAt(e.clientX,e.clientY);
+    if(drag.hover!==hover){drag.hover=hover;update();}
+  });
+  window.addEventListener('pointerup',e=>{
+    if(!drag || e.pointerId!==drag.id)return;
+    const {from,x,y,moved}=drag;
+    const end=cellAt(e.clientX,e.clientY);
+    const wasDrag=moved || Math.hypot(e.clientX-x,e.clientY-y)>12;
+    drag=null;
+    if(!running){update();return;}
+    if(!wasDrag){tap(from);return;}
+    if(regions[from].owner!==0)msg('Pour glisser, partez d’une <strong>région bleue</strong>.');
+    else if(end===null)msg('Déplacement annulé : relâchez sur une région voisine.');
+    else if(!neighbors(from).includes(end))msg('Cible trop éloignée : glissez vers <strong>une région voisine</strong>.');
+    else{
+      const ok=move(from,end,percent/100);
+      selected=null;
+      msg(ok?'<strong>Mouvement effectué !</strong> Glissez à nouveau pour continuer.':'Pas assez d’unités dans cette région.');
+      checkElimination();
+    }
+    update();
+  });
+  window.addEventListener('pointercancel',e=>{if(drag && e.pointerId===drag.id){drag=null;update();}});
   function bot(owner){
     const owned=regions.map((r,i)=>r.owner===owner?i:-1).filter(i=>i>=0);
     if(!owned.length)return;
@@ -137,7 +196,9 @@
     document.getElementById('resultText').textContent=`Vous contrôlez ${scores[0]} régions sur ${TOTAL}. Rouge : ${scores[1]}. Orange : ${scores[2]}. ${victory?'Vous dominez la carte !':'Essayez de conquérir les régions bonus ★ plus tôt.'}`;
     result.classList.remove('hidden');
   }
-  ratios.forEach(b=>b.addEventListener('click',()=>{ratio=Number(b.dataset.ratio);ratios.forEach(v=>v.classList.toggle('active',v===b));}));
+  powerSlider.addEventListener('input',()=>{percent=Number(powerSlider.value);powerUI();});
+  document.getElementById('powerMinus').addEventListener('click',()=>{percent=Math.max(1,percent-1);powerUI();});
+  document.getElementById('powerPlus').addEventListener('click',()=>{percent=Math.min(100,percent+1);powerUI();});
   document.getElementById('restart').addEventListener('click',create);
   document.getElementById('playAgain').addEventListener('click',create);
   window.addEventListener('pagehide',()=>{clearInterval(interval);clearInterval(botTimer)});
