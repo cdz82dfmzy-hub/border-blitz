@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V1.8</title>
+  <title>Border Blitz — Prototype V1.9</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#53675f; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
@@ -81,7 +81,7 @@
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V1.8 • CARTES ALÉATOIRES</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V1.9 • CARTE PLUS LISIBLE</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
   <section class="world-selector" aria-label="Mode de génération de carte">
     <label for="mapMode">CARTE</label>
     <select id="mapMode" aria-label="Mode de jeu"><option value="small">1 à 10 joueurs</option><option value="50" selected>50 joueurs</option><option value="200">200 joueurs</option></select>
@@ -132,6 +132,10 @@
   let totalLand=0, coastPath=new Path2D();
   let lastBattleReport=null;
   let zoom=1, offsetX=0, offsetY=0, autoFollow=true, cameraTarget=null;
+  let cameraFrameId=0,lastCameraFrame=0;
+  let labelsDrawn=0,markersDrawn=0;
+  let borderDirtyAll=true;
+  const borderDirty=new Set();
   const MAX_ZOOM=12;
   const MAX_ATTACKERS_ON_PLAYER=2;
   const LAST_POCKET_LIMIT=64;
@@ -157,6 +161,45 @@
   function setPixel(i,owner){
     const c=owner===WATER?[23,57,76]:owner===NEUTRAL?[83,103,95]:rgba[owner];
     const d=pixels.data,j=i*4;d[j]=c[0];d[j+1]=c[1];d[j+2]=c[2];d[j+3]=255;layerDirty=true;
+  }
+  // Frontières dessinées dans la texture mise en cache.
+  // Les cellules modifiées ne recalculent que leurs voisins immédiats.
+  function outlineAt(i){
+    const own=tiles[i];
+    if(own===WATER)return false;
+    const x=i%COLS,y=(i/COLS)|0;
+    if(x>0&&tiles[i-1]!==own&&tiles[i-1]!==WATER)return true;
+    if(x<COLS-1&&tiles[i+1]!==own&&tiles[i+1]!==WATER)return true;
+    if(y>0&&tiles[i-COLS]!==own&&tiles[i-COLS]!==WATER)return true;
+    if(y<ROWS-1&&tiles[i+COLS]!==own&&tiles[i+COLS]!==WATER)return true;
+    return false;
+  }
+  function paintOutline(i){
+    if(!outlineAt(i))return;
+    const p=i*4,d=pixels.data,own=tiles[i];
+    // Liseré cyan pour le joueur, foncé pour séparer les 199 autres couleurs.
+    if(own===0){d[p]=153;d[p+1]=231;d[p+2]=255;}
+    else{d[p]=10;d[p+1]=23;d[p+2]=38;}
+    layerDirty=true;
+  }
+  function refreshOutlines(){
+    if(borderDirtyAll){
+      for(let i=0;i<TOTAL;i++)paintOutline(i);
+      borderDirty.clear();borderDirtyAll=false;
+      return;
+    }
+    if(borderDirty.size){
+      for(const i of borderDirty){
+        setPixel(i,tiles[i]);
+        paintOutline(i);
+      }
+      borderDirty.clear();
+    }
+  }
+  function markOutlineDirty(i,neighbors){
+    if(borderDirtyAll)return;
+    borderDirty.add(i);
+    for(const j of neighbors)borderDirty.add(j);
   }
   const pointers=new Map();
   let pinch=null, preventTapAfterPinch=false;
@@ -192,7 +235,7 @@
     TOTAL=COLS*ROWS;
     rgb=['#35a4f1'];armyName=['Vous'];
     for(let i=1;i<ACTIVE_REALMS;i++){
-      rgb.push('hsl('+((i*137.508)%360).toFixed(2)+' '+(67+i%3*4)+'% '+(46+i%4*4)+'%)');
+      rgb.push('hsl('+((i*137.508)%360).toFixed(2)+' '+(82+i%3*3)+'% '+(45+i%4*3)+'%)');
       armyName.push('Royaume '+(i+1));
     }
     rgba=rgb.map(color=>{
@@ -214,6 +257,7 @@
     ACTIVE_SLOTS=Array.from({length:ACTIVE_REALMS},(_,i)=>i);
     layer.width=COLS;layer.height=ROWS;
     pixels=layerCtx.createImageData(COLS,ROWS);layerDirty=true;
+    borderDirtyAll=true;borderDirty.clear();
     worldSeed=(Math.random()*4294967296)>>>0;
     const random=seededRandom(worldSeed);
     terrainFreq=[2,3,5,7,11,17];
@@ -262,7 +306,7 @@
     if(prev>=0){territoryCounts[prev]--;sumsX[prev]-=i%COLS+.5;sumsY[prev]-=(i/COLS|0)+.5;}
     tiles[i]=next;
     if(next>=0){territoryCounts[next]++;sumsX[next]+=i%COLS+.5;sumsY[next]+=(i/COLS|0)+.5;}
-    setPixel(i,next);
+    setPixel(i,next);markOutlineDirty(i,neighbors);
     const affected=new Set();
     if(prev>=0)affected.add(prev);if(next>=0)affected.add(next);
     for(const j of neighbors)if(tiles[j]>=0)affected.add(tiles[j]);
@@ -383,7 +427,7 @@
           setPixel(i,owner);
         }
     }
-    rebuildFrontiers();
+    rebuildFrontiers();borderDirtyAll=true;borderDirty.clear();
   }
 
   // Unités engagées : immobilisées pendant l'offensive, non perdues d'avance.
@@ -511,6 +555,8 @@
     offsetY=Math.min(0,Math.max(mapH*(1-zoom),offsetY));
   }
   function setZoom(next,cx=mapW/2,cy=mapH/2){
+    // Un zoom manuel suspend la caméra, sinon elle annulait la commande suivante.
+    autoFollow=false;cameraTarget=null;
     const oldZoom=zoom;
     zoom=Math.max(1,Math.min(MAX_ZOOM,Math.round(next*100)/100));
     offsetX=cx-(cx-offsetX)*zoom/oldZoom;offsetY=cy-(cy-offsetY)*zoom/oldZoom;
@@ -519,12 +565,14 @@
 
   function updateCameraButtons(){
     $('followCamera').classList.toggle('active',autoFollow);
-    $('zoomLevel').textContent=Math.round(zoom*100)+' %';
-    $('zoomOut').disabled=zoom<=1;$('zoomIn').disabled=zoom>=MAX_ZOOM;
+    const shown=Math.round(zoom*100)+' %';
+    if($('zoomLevel').textContent!==shown)$('zoomLevel').textContent=shown;
+    $('zoomOut').disabled=zoom<=1.001;$('zoomIn').disabled=zoom>=MAX_ZOOM-.001;
   }
   function followPlayer(force=false){
     if(!autoFollow||!count(0))return;
-    if(!force&&waveCount%20!==0)return;
+    // Les cibles sont réévaluées souvent, le déplacement est animé séparément.
+    if(!force&&waveCount%(ACTIVE_REALMS>=200?5:4)!==0)return;
     let minX=COLS,maxX=-1,minY=ROWS,maxY=-1;
     for(let i=0;i<TOTAL;i++)if(tiles[i]===0){
       const x=i%COLS,y=i/COLS|0;
@@ -532,18 +580,39 @@
       if(y<minY)minY=y;if(y>maxY)maxY=y;
     }
     if(maxX<0)return;
+    // Une marge de sécurité évite les mouvements brusques à chaque nouvelle case.
     const ratio=Math.max((maxX-minX+1)/COLS,(maxY-minY+1)/ROWS);
-    cameraTarget={zoom:Math.min(MAX_ZOOM,Math.max(1,.53/Math.max(.01,ratio))),
-      x:(minX+maxX+1)/2/COLS*mapW,y:(minY+maxY+1)/2/ROWS*mapH};
-    if(force)cameraStep(true);
+    const desiredZoom=Math.max(1,Math.min(MAX_ZOOM,.65/Math.max(.01,ratio)));
+    const centerX=(minX+maxX+1)*.5/COLS*mapW,centerY=(minY+maxY+1)*.5/ROWS*mapH;
+    cameraTarget={zoom:desiredZoom,x:centerX,y:centerY};
   }
-  function cameraStep(force=false){
-    if(!autoFollow||!cameraTarget)return;
-    const a=force?1:.13;
-    zoom+=a*(cameraTarget.zoom-zoom);
-    const destX=mapW/2-cameraTarget.x*zoom,destY=mapH/2-cameraTarget.y*zoom;
-    offsetX+=a*(destX-offsetX);offsetY+=a*(destY-offsetY);
+  function cameraStep(force=false,dt=33){
+    if(!autoFollow||!cameraTarget)return false;
+    const oldZ=zoom,oldX=offsetX,oldY=offsetY;
+    // Interpolation temporelle stable, indépendante des vagues de combat.
+    const t=force?1:1-Math.exp(-Math.min(120,Math.max(0,dt))/320);
+    zoom+=t*(cameraTarget.zoom-zoom);
+    const aimX=mapW/2-cameraTarget.x*zoom,aimY=mapH/2-cameraTarget.y*zoom;
+    offsetX+=t*(aimX-offsetX);offsetY+=t*(aimY-offsetY);
     clampCamera();updateCameraButtons();
+    return Math.abs(zoom-oldZ)>0.0002||Math.abs(offsetX-oldX)+Math.abs(offsetY-oldY)>.06;
+  }
+  function animateCamera(now){
+    cameraFrameId=0;
+    if(!running)return;
+    const dt=lastCameraFrame?Math.min(100,now-lastCameraFrame):33;
+    if(!lastCameraFrame||dt>=30){
+      lastCameraFrame=now;
+      if(cameraStep(false,dt))draw();
+    }
+    if(typeof window.requestAnimationFrame==='function')
+      cameraFrameId=window.requestAnimationFrame(animateCamera);
+  }
+  function startCameraAnimation(){
+    if(cameraFrameId&&window.cancelAnimationFrame)window.cancelAnimationFrame(cameraFrameId);
+    cameraFrameId=0;lastCameraFrame=0;
+    if(typeof window.requestAnimationFrame==='function')
+      cameraFrameId=window.requestAnimationFrame(animateCamera);
   }
   function viewWholeMap(){
     autoFollow=false;cameraTarget=null;zoom=1;offsetX=0;offsetY=0;
@@ -553,49 +622,91 @@
     autoFollow=true;followPlayer(true);updateCameraButtons();draw();
   }
   function resize(){
-    const box=canvas.getBoundingClientRect(),previousW=mapW,previousH=mapH;
+    const box=canvas.getBoundingClientRect(),beforeW=mapW,beforeH=mapH;
     mapW=box.width||370;mapH=box.height||330;
-    offsetX*=mapW/previousW;offsetY*=mapH/previousH;
+    offsetX*=mapW/beforeW;offsetY*=mapH/beforeH;
     clampCamera();
     const dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.round(mapW*dpr);canvas.height=Math.round(mapH*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    if(autoFollow)followPlayer(true);
+    if(autoFollow){
+      followPlayer(true);
+      // Premier cadre correct dès l'ouverture; ensuite animation progressive.
+      if(!lastCameraFrame)cameraStep(true);
+    }
     updateCameraButtons();draw();
   }
   function draw(){
     const dx=mapW/COLS,dy=mapH/ROWS;
     ctx.save();ctx.clearRect(0,0,mapW,mapH);
     ctx.fillStyle='#17394c';ctx.fillRect(0,0,mapW,mapH);
+    if(borderDirtyAll||borderDirty.size)refreshOutlines();
     if(layerDirty){layerCtx.putImageData(pixels,0,0);layerDirty=false;}
     ctx.translate(offsetX,offsetY);ctx.scale(zoom,zoom);
     ctx.imageSmoothingEnabled=false;ctx.drawImage(layer,0,0,mapW,mapH);
     ctx.save();ctx.scale(dx,dy);
-    ctx.strokeStyle='#bfd1c4';ctx.lineWidth=1.2/(Math.min(dx,dy)*zoom);
+    ctx.strokeStyle='#d1e1d8';ctx.lineWidth=1.25/(Math.min(dx,dy)*zoom);
     ctx.stroke(coastPath);ctx.restore();
     const now=performance.now();
     for(const [i,stamp] of flashing){
       const age=now-stamp;if(age>750){flashing.delete(i);continue;}
       const x=(i%COLS+.5)*dx,y=((i/COLS|0)+.5)*dy;
       if(x*zoom+offsetX<0||x*zoom+offsetX>mapW||y*zoom+offsetY<0||y*zoom+offsetY>mapH)continue;
-      ctx.globalAlpha=(1-age/750)*.55;ctx.fillStyle='#e7faff';
+      ctx.globalAlpha=(1-age/750)*.50;ctx.fillStyle='#e7faff';
       ctx.fillRect(x-dx*.5,y-dy*.5,dx,dy);
     }
     ctx.globalAlpha=1;
-    if(zoom>=2.2)for(let owner=0;owner<ACTIVE_REALMS;owner++){
-      if(!count(owner))continue;
-      const x=sumsX[owner]/count(owner)*dx,y=sumsY[owner]/count(owner)*dy;
-      if(x*zoom+offsetX<-30||x*zoom+offsetX>mapW+30||y*zoom+offsetY<-30||y*zoom+offsetY>mapH+30)continue;
-      // Réserve + troupes engagées : nombre réel encore mobilisable.
+    // Priorité au joueur, puis aux territoires les plus lisibles.
+    // Le nombre de troupes reste présent tant qu'il peut tenir dans son royaume.
+    const badges=[],occupied=[],pins=[];
+    const scale=zoom*Math.sqrt(dx*dy);
+    for(let owner=0;owner<ACTIVE_REALMS;owner++){
+      const territory=count(owner);if(!territory)continue;
+      const screenX=(sumsX[owner]/territory*dx)*zoom+offsetX;
+      const screenY=(sumsY[owner]/territory*dy)*zoom+offsetY;
+      if(screenX<-22||screenX>mapW+22||screenY<-22||screenY>mapH+22)continue;
       const label=fmtTroops(fightingStrength(owner));
-      const fontSize=10/zoom,boxW=Math.max(21,label.length*6.1+9)/zoom,boxH=18/zoom;
-      ctx.fillStyle='#0c1b2ae8';ctx.strokeStyle=rgb[owner];ctx.lineWidth=1.4/zoom;
-      ctx.fillRect(x-boxW/2,y-boxH/2,boxW,boxH);
-      ctx.strokeRect(x-boxW/2,y-boxH/2,boxW,boxH);
-      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
-      ctx.font='bold '+fontSize+'px system-ui';ctx.fillText(label,x,y);
+      const width=Math.max(24,label.length*6.3+12),height=18;
+      const diameter=2*Math.sqrt(territory/Math.PI)*scale;
+      const threshold=Math.max(width*1.25,29);
+      const alpha=Math.max(0,Math.min(1,(diameter-threshold+9)/11));
+      if(alpha>.02)badges.push({owner,x:screenX,y:screenY,label,width,height,alpha,area:territory});
+      else pins.push({owner,x:screenX,y:screenY,diameter});
     }
+    badges.sort((a,b)=>a.owner===0?-1:b.owner===0?1:b.area-a.area);
+    labelsDrawn=0;markersDrawn=0;
+    // Badges en coordonnées écran: dimensions invariantes et pas de collision.
     ctx.restore();
+    ctx.save();
+    for(const b of badges){
+      const rect={x:b.x-b.width/2,y:b.y-b.height/2,w:b.width,h:b.height};
+      const overlaps=occupied.some(p=>rect.x<p.x+p.w+3&&rect.x+rect.w+3>p.x&&
+                                    rect.y<p.y+p.h+3&&rect.y+rect.h+3>p.y);
+      if(overlaps){pins.push({owner:b.owner,x:b.x,y:b.y,diameter:0});continue;}
+      if(b.x<0||b.x>mapW||b.y<0||b.y>mapH)continue;
+      occupied.push(rect);ctx.globalAlpha=b.alpha;
+      ctx.fillStyle='#091726';ctx.strokeStyle=b.owner===0?'#a4eaff':'#e9f4ff';
+      ctx.lineWidth=b.owner===0?1.7:1;
+      ctx.fillRect(rect.x,rect.y,rect.w,rect.h);
+      ctx.strokeRect(rect.x,rect.y,rect.w,rect.h);
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
+      ctx.font='bold 11px system-ui';ctx.fillText(b.label,b.x,b.y);
+      labelsDrawn++;
+    }
+    // Les petites enclaves restent identifiables par un point, sans numéro géant.
+    const pinCells=new Set();
+    for(const p of pins){
+      if(p.x<3||p.x>mapW-3||p.y<3||p.y>mapH-3)continue;
+      const key=((p.x/12)|0)+','+((p.y/12)|0);
+      if(pinCells.has(key))continue;
+      if(occupied.some(b=>p.x>b.x-3&&p.x<b.x+b.w+3&&p.y>b.y-3&&p.y<b.y+b.h+3))continue;
+      pinCells.add(key);ctx.globalAlpha=.95;
+      ctx.beginPath();ctx.fillStyle=p.owner===0?'#eafaff':'#12263d';
+      ctx.strokeStyle=p.owner===0?'#c6f2ff':'#f5ffff';
+      ctx.lineWidth=1;
+      ctx.arc(p.x,p.y,p.owner===0?4.6:2.7,0,Math.PI*2);ctx.fill();ctx.stroke();markersDrawn++;
+    }
+    ctx.globalAlpha=1;ctx.restore();
   }
   function render(){renderScore();draw();}
   /* Zoom preserves a constant-size kingdom label in screen pixels. */
@@ -759,7 +870,7 @@
     waveCount++;
     if(waveCount%(ACTIVE_REALMS>=200?140:60)===0&&capturesSinceCleanup>(ACTIVE_REALMS>=200?300:180)){cleanupFragments();capturesSinceCleanup=0;}
     if(waveCount%8===0)finishLastPockets();
-    followPlayer();cameraStep();
+    followPlayer();
     if(waveCount%2===0)renderScore();draw();
   }
 
@@ -952,9 +1063,11 @@
   $('generateWorld').addEventListener('click',create);
   $('restart').addEventListener('click',create);$('playAgain').addEventListener('click',create);
   window.addEventListener('resize',resize);
-  window.addEventListener('pagehide',()=>{clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);});
+  window.addEventListener('pagehide',()=>{clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);if(cameraFrameId&&window.cancelAnimationFrame)window.cancelAnimationFrame(cameraFrameId);});
   function create(){
     clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);
+    if(cameraFrameId&&window.cancelAnimationFrame)window.cancelAnimationFrame(cameraFrameId);
+    cameraFrameId=0;lastCameraFrame=0;
     configureWorld();
     $('scoreboard').innerHTML=scoreMarkup();startArmyPositions();
     armies.fill(180);armies[0]=220;
@@ -968,12 +1081,12 @@
     message('<strong>Carte #'+(worldSeed%10000)+'</strong> : '+ACTIVE_REALMS+' royaumes. Touchez plusieurs ennemis pour attaquer.');
     timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,WAVE_MS);
     botTimer=setInterval(aiScheduler,1000);
-    resize();render();
+    resize();render();startCameraAnimation();
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,autoFollow,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
-      touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
+    window.__borderBlitzTest={getState:()=>({seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+      touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
   create();
