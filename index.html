@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V0.6</title>
+  <title>Border Blitz — Prototype V0.7</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#3a4b5c; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
@@ -27,7 +27,7 @@
     .result{position:fixed;inset:0;background:#030911c9;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.result.hidden{display:none}.modal{width:min(100%,370px);padding:26px;border:1px solid #4b667e;border-radius:20px;background:linear-gradient(155deg,#21354b,#101b2b);text-align:center;box-shadow:0 30px 90px #000a}.modal .symbol{font-size:38px}.modal h2{font-size:27px;margin:10px 0}.modal p{line-height:1.5;color:#c3d4e6;font-size:14px}.primary{padding:13px 26px;border-radius:12px;background:#239ceb;color:#fff;font-weight:850;width:100%;margin-top:9px}
     @media (min-height:800px){.app{justify-content:space-between}.board-card{margin:auto 0}}
 
-    /* V0.6 — carte 152 × 132, sans bande superposée au terrain */
+    /* V0.7 — carte pour 10 positions de départ (seuls 3 royaumes sont actifs). */
     .board{display:block;position:relative;aspect-ratio:38/33;border-radius:14px;overflow:hidden;border:1px solid #486179;background:#263a4b;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
     .board canvas{width:100%;height:100%;display:block;touch-action:none}
     .war-row{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #2b4f6e;background:#15304b;border-radius:11px;padding:8px 10px;min-height:43px}
@@ -38,18 +38,25 @@
     .realm-army{margin:1px 0 6px;padding:8px 11px}
     .hint{min-height:34px}
     @media(max-width:390px){.score small{font-size:10px}.score strong{font-size:21px}.app{gap:8px}.board-head{padding-bottom:6px}}
+    .map-tools{display:flex;align-items:center;gap:4px;margin-left:auto;margin-right:6px;white-space:nowrap}
+    .map-tools button{height:31px;min-width:31px;background:#223b56;border:1px solid #4a7090;border-radius:8px;font-size:20px;font-weight:800;line-height:1}
+    .map-tools button:disabled{opacity:.4}
+    .map-tools output{font-size:11px;color:#bfe6ff;min-width:37px;text-align:center;font-weight:750}
+    .board-head b{font-size:clamp(10px,3vw,13px)}
+    .board{aspect-ratio:38/33;}
+    .board-head .clock{font-size:13px}
   </style>
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.6 • FRONT ULTRA FIN</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.7 • GRANDE CARTE</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
   <section class="scoreboard" aria-label="Territoires des royaumes">
     <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small id="army0">0 unités</small><div class="bar" id="bar0"></div></div>
     <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small id="army1">0 unités</small><div class="bar" id="bar1"></div></div>
     <div class="score orange"><small>🟠 ORANGE</small><strong id="score2">0</strong><small id="army2">0 unités</small><div class="bar" id="bar2"></div></div>
   </section>
   <section class="board-card" aria-label="Plateau de jeu">
-    <div class="board-head"><b>FAITES AVANCER LE FRONT</b><span class="clock" id="clock">02:00</span></div>
+    <div class="board-head"><b>CARTE • 3/10 ROYAUMES</b><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div><span class="clock" id="clock">02:00</span></div>
     <div class="board" id="board"><canvas id="map" role="img" aria-label="Carte des royaumes. Touchez une zone à conquérir pour lancer une offensive continue."></canvas></div>
     <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span><i class="dot" style="background:#35a4f1"></i>Vous</span><span><i class="dot" style="background:#f46d74"></i>Rouge</span><span><i class="dot" style="background:#ecb65a"></i>Orange</span></div>
   </section>
@@ -63,17 +70,22 @@
     <div class="war-row"><span class="war-label" id="warLabel"><strong>Prêt à attaquer</strong> Touchez une zone grise, rouge ou orange.</span><button type="button" class="war-stop" id="stopAttack" disabled>Arrêter</button></div>
     <p class="hint" id="hint" aria-live="polite"><strong>À vous de jouer !</strong> Touchez une zone à conquérir pour lancer une offensive sur toute la frontière.</p>
   </section>
-  <div class="footer">Une armée par royaume. Le front avance automatiquement et conquiert plusieurs zones à la fois. Partie : 2 minutes.</div>
+  <div class="footer">3 royaumes actifs sur 10 emplacements. Touchez pour attaquer ; zoomez puis glissez pour explorer. Partie : 2 minutes.</div>
 </main>
 <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="modal"><div class="symbol" id="resultSymbol">🏆</div><h2 id="resultTitle">Partie terminée</h2><p id="resultText"></p><button class="primary" id="playAgain">Nouvelle partie</button></div></div>
 <script>
 (()=>{
   'use strict';
   // La grille n'est utilisée que pour les calculs : elle n'apparaît jamais à l'écran.
-  // 4 fois plus de subdivisions par axe par rapport à la V0.4 = 16 fois plus de cellules.
-  // La géométrie est affinée sans multiplier par quatre l'économie du jeu.
+  // Grille de densité identique à la V0.6, surface totale 2,25 fois supérieure.
+  // Le système garde 3 combattants, et prévoit 10 points de départ espacés.
   const DETAIL=4, AREA=DETAIL*DETAIL;
-  const COLS=38*DETAIL, ROWS=33*DETAIL, TOTAL=COLS*ROWS;
+  const COLS=57*DETAIL, ROWS=49.5*DETAIL, TOTAL=COLS*ROWS;
+  const ACTIVE_REALMS=3;
+  const SPAWN_SLOTS=[
+    [.17,.22],[.83,.22],[.50,.78],
+    [.50,.17],[.17,.50],[.83,.50],[.17,.80],[.83,.80],[.38,.50],[.62,.50]
+  ];
   const GAME_LENGTH=120, MAX_ARMY=6500, WAVE_MS=220/DETAIL;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
@@ -83,6 +95,9 @@
   let tiles=new Int8Array(TOTAL), territoryCounts=[0,0,0], armies=[180,155,155], campaigns=[null,null,null];
   let percent=50, timeLeft=GAME_LENGTH, running=false, timer=null, wavesTimer=null, botTimer=null;
   let flashing=new Map(), touched=null, mapW=370, mapH=330, lastMessage='';
+  let zoom=1, offsetX=0, offsetY=0;
+  const pointers=new Map();
+  let pinch=null, preventTapAfterPinch=false;
   const index=(x,y)=>y*COLS+x;
   const inside=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS;
   const near=i=>{const x=i%COLS,y=Math.floor(i/COLS),a=[];
@@ -108,13 +123,17 @@
   function centers(i){return {x:(i%COLS+.5)/COLS,y:(Math.floor(i/COLS)+.5)/ROWS};}
   function startArmyPositions(){
     tiles.fill(-1);territoryCounts.fill(0);
-    const spots=[[9,10],[29,10],[19,26]];
-    for(let i=0;i<TOTAL;i++){
-      const x=i%COLS,y=Math.floor(i/COLS);
-      for(let owner=0;owner<3;owner++){
-        const [sx,sy]=spots[owner];
-        if(((x-(sx+.5)*DETAIL)/(4.5*DETAIL))**2+((y-(sy+.5)*DETAIL)/(4.2*DETAIL))**2<=1){
-          tiles[i]=owner;territoryCounts[owner]++;break;
+    // Dix emplacements sans chevauchement, seuls les trois premiers jouent.
+    // Une même taille de capitale qu'en V0.6, malgré la carte agrandie.
+    const rx=4.5*DETAIL,ry=4.2*DETAIL;
+    for(let owner=0;owner<ACTIVE_REALMS;owner++){
+      const [px,py]=SPAWN_SLOTS[owner];
+      const cx=px*COLS,cy=py*ROWS;
+      for(let y=Math.max(0,Math.floor(cy-ry));y<Math.min(ROWS,Math.ceil(cy+ry));y++){
+        for(let x=Math.max(0,Math.floor(cx-rx));x<Math.min(COLS,Math.ceil(cx+rx));x++){
+          if(((x+.5-cx)/rx)**2+((y+.5-cy)/ry)**2>1)continue;
+          const i=index(x,y);
+          if(tiles[i]===-1){tiles[i]=owner;territoryCounts[owner]++;}
         }
       }
     }
@@ -141,42 +160,65 @@
     $('clock').textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');
     renderPower();renderWar();
   }
+  function clampCamera(){
+    offsetX=Math.min(0,Math.max(mapW*(1-zoom),offsetX));
+    offsetY=Math.min(0,Math.max(mapH*(1-zoom),offsetY));
+  }
+  function setZoom(next,cx=mapW/2,cy=mapH/2){
+    const oldZoom=zoom;
+    zoom=Math.max(1,Math.min(3,Math.round(next*100)/100));
+    offsetX=cx-(cx-offsetX)*zoom/oldZoom;
+    offsetY=cy-(cy-offsetY)*zoom/oldZoom;
+    clampCamera();
+    $('zoomLevel').textContent=Math.round(zoom*100)+' %';
+    $('zoomOut').disabled=zoom<=1;
+    $('zoomIn').disabled=zoom>=3;
+    draw();
+  }
   function resize(){
     const box=canvas.getBoundingClientRect();
+    const previousW=mapW,previousH=mapH;
     mapW=box.width||370;mapH=box.height||330;
+    offsetX*=mapW/previousW;offsetY*=mapH/previousH;
+    clampCamera();
     const dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.round(mapW*dpr);canvas.height=Math.round(mapH*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);draw();
   }
   function draw(){
     const dx=mapW/COLS,dy=mapH/ROWS;
+    ctx.save();
     ctx.clearRect(0,0,mapW,mapH);
     ctx.fillStyle='#304455';ctx.fillRect(0,0,mapW,mapH);
+    ctx.translate(offsetX,offsetY);ctx.scale(zoom,zoom);
     // Le remplissage joint les territoires sans espacement ni contour de case.
     // Dessiner des bandes contiguës réduit fortement les appels Canvas sur mobile.
-    for(let row=0;row<ROWS;row++){
+    const left=Math.max(0,Math.floor((-offsetX/zoom)/dx)-1);
+    const right=Math.min(COLS,Math.ceil(((mapW-offsetX)/zoom)/dx)+1);
+    const top=Math.max(0,Math.floor((-offsetY/zoom)/dy)-1);
+    const bottom=Math.min(ROWS,Math.ceil(((mapH-offsetY)/zoom)/dy)+1);
+    const borders=[new Path2D(),new Path2D(),new Path2D()];
+    for(let row=top;row<bottom;row++){
       const base=row*COLS;
-      for(let x=0;x<COLS;){
+      for(let x=left;x<right;){
         const owner=tiles[base+x];let end=x+1;
-        while(end<COLS && tiles[base+end]===owner)end++;
+        while(end<right && tiles[base+end]===owner)end++;
         ctx.fillStyle=rgb[owner<0?3:owner];
         ctx.fillRect(x*dx-.12,row*dy-.12,(end-x)*dx+.24,dy+.24);
         x=end;
       }
-    }
-    // Ligne extérieure de chaque royaume, continue même sur une grande frontière.
-    for(let owner=0;owner<3;owner++){
-      ctx.beginPath();
-      for(let i=0;i<TOTAL;i++){
-        if(tiles[i]!==owner)continue;
-        const x=(i%COLS)*dx,y=Math.floor(i/COLS)*dy;
-        if(i%COLS===0||tiles[i-1]!==owner){ctx.moveTo(x,y);ctx.lineTo(x,y+dy);}
-        if(i%COLS===COLS-1||tiles[i+1]!==owner){ctx.moveTo(x+dx,y);ctx.lineTo(x+dx,y+dy);}
-        if(i<COLS||tiles[i-COLS]!==owner){ctx.moveTo(x,y);ctx.lineTo(x+dx,y);}
-        if(i>=TOTAL-COLS||tiles[i+COLS]!==owner){ctx.moveTo(x,y+dy);ctx.lineTo(x+dx,y+dy);}
+      for(let x=left;x<right;x++){
+        const i=base+x,owner=tiles[i];if(owner<0)continue;
+        const p=borders[owner],px=x*dx,py=row*dy;
+        if(x===0||tiles[i-1]!==owner){p.moveTo(px,py);p.lineTo(px,py+dy);}
+        if(x===COLS-1||tiles[i+1]!==owner){p.moveTo(px+dx,py);p.lineTo(px+dx,py+dy);}
+        if(row===0||tiles[i-COLS]!==owner){p.moveTo(px,py);p.lineTo(px+dx,py);}
+        if(row===ROWS-1||tiles[i+COLS]!==owner){p.moveTo(px,py+dy);p.lineTo(px+dx,py+dy);}
       }
-      ctx.lineWidth=1.2;ctx.strokeStyle=['#a1e4ff','#ffb6bd','#ffe0a1'][owner];
-      ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    }
+    for(let owner=0;owner<ACTIVE_REALMS;owner++){
+      ctx.lineWidth=1.2/zoom;ctx.strokeStyle=['#a1e4ff','#ffb6bd','#ffe0a1'][owner];
+      ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(borders[owner]);
     }
     // Les zones récemment conquises clignotent brièvement : sensation d'avancée.
     const now=performance.now();
@@ -184,6 +226,7 @@
       const age=now-stamp;
       if(age>850){flashing.delete(i);continue;}
       const x=(i%COLS+.5)*dx,y=(Math.floor(i/COLS)+.5)*dy;
+      if(x*zoom+offsetX<0||x*zoom+offsetX>mapW||y*zoom+offsetY<0||y*zoom+offsetY>mapH)continue;
       ctx.globalAlpha=(1-age/850)*.8;ctx.fillStyle='#e7faff';
       ctx.beginPath();ctx.arc(x,y,Math.min(dx,dy)*(.25+.35*age/850),0,Math.PI*2);ctx.fill();
     }
@@ -198,14 +241,16 @@
     for(let owner=0;owner<3;owner++){
       if(!ns[owner])continue;
       const x=sumsX[owner]/ns[owner]*dx,y=sumsY[owner]/ns[owner]*dy;
-      const r=15;
-      ctx.fillStyle='#0c1b2ad9';ctx.strokeStyle=['#9bdfff','#ffc0c8','#ffe2a5'][owner];ctx.lineWidth=1.5;
+      const r=15/zoom;
+      ctx.fillStyle='#0c1b2ad9';ctx.strokeStyle=['#9bdfff','#ffc0c8','#ffe2a5'][owner];ctx.lineWidth=1.5/zoom;
       ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
-      ctx.font='bold '+(owner===0?9:8)+'px system-ui';ctx.fillText(labels[owner],x,y);
+      ctx.font='bold '+(owner===0?9/zoom:8/zoom)+'px system-ui';ctx.fillText(labels[owner],x,y);
     }
+    ctx.restore();
   }
   function render(){renderScore();draw();}
+  /* Zoom preserves a constant-size kingdom label in screen pixels. */
   function endCampaign(owner){
     const c=campaigns[owner];if(!c)return;
     armies[owner]=Math.min(MAX_ARMY,armies[owner]+Math.max(0,Math.floor(c.budget)));
@@ -312,27 +357,70 @@
   }
   function gridAt(clientX,clientY){
     const box=canvas.getBoundingClientRect();
-    const x=Math.floor((clientX-box.left)/box.width*COLS),y=Math.floor((clientY-box.top)/box.height*ROWS);
+    const mx=(clientX-box.left-offsetX)/zoom,my=(clientY-box.top-offsetY)/zoom;
+    const x=Math.floor(mx/mapW*COLS),y=Math.floor(my/mapH*ROWS);
     return inside(x,y)?index(x,y):null;
   }
+  // Les attaques restent à un seul toucher ; les déplacements servent à explorer quand on zoome.
+  // Le pincement utilise les Pointer Events (iOS Safari et navigateur desktop).
   canvas.addEventListener('pointerdown',e=>{
     if(!running||(e.pointerType==='mouse'&&e.button!==0))return;
-    e.preventDefault();touched={id:e.pointerId,x:e.clientX,y:e.clientY};
+    e.preventDefault();
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false});
     if(canvas.setPointerCapture)canvas.setPointerCapture(e.pointerId);
+    if(pointers.size===1){touched={id:e.pointerId,x:e.clientX,y:e.clientY};preventTapAfterPinch=false;}
+    if(pointers.size===2){
+      const [a,b]=[...pointers.values()];
+      const centerX=(a.x+b.x)/2-canvas.getBoundingClientRect().left;
+      const centerY=(a.y+b.y)/2-canvas.getBoundingClientRect().top;
+      pinch={distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),startZoom:zoom,
+        anchorX:(centerX-offsetX)/zoom,anchorY:(centerY-offsetY)/zoom};
+      touched=null;preventTapAfterPinch=true;
+    }
+  });
+  canvas.addEventListener('pointermove',e=>{
+    const p=pointers.get(e.pointerId);if(!p)return;
+    e.preventDefault();
+    const prevX=p.x,prevY=p.y;p.x=e.clientX;p.y=e.clientY;
+    if(Math.hypot(p.x-p.startX,p.y-p.startY)>9)p.moved=true;
+    if(pointers.size>=2 && pinch){
+      const [a,b]=[...pointers.values()];
+      const dist=Math.max(1,Math.hypot(a.x-b.x,a.y-b.y));
+      zoom=Math.max(1,Math.min(3,pinch.startZoom*dist/pinch.distance));
+      const box=canvas.getBoundingClientRect();
+      offsetX=(a.x+b.x)/2-box.left-pinch.anchorX*zoom;
+      offsetY=(a.y+b.y)/2-box.top-pinch.anchorY*zoom;
+      clampCamera();$('zoomLevel').textContent=Math.round(zoom*100)+' %';
+      $('zoomOut').disabled=zoom<=1;$('zoomIn').disabled=zoom>=3;draw();
+    }else if(pointers.size===1 && zoom>1 && p.moved && !preventTapAfterPinch){
+      offsetX+=p.x-prevX;offsetY+=p.y-prevY;clampCamera();draw();
+    }
   });
   canvas.addEventListener('pointerup',e=>{
-    if(!running||!touched||e.pointerId!==touched.id)return;
-    e.preventDefault();
-    const start=gridAt(touched.x,touched.y),end=gridAt(e.clientX,e.clientY);
-    const travel=Math.hypot(e.clientX-touched.x,e.clientY-touched.y);touched=null;
-    if(end===null)return;
-    // Toucher n'importe quel territoire adverse OU glisser depuis son royaume.
-    if(travel>=15 && (start===null||tiles[start]!==0)){
-      message('Pour glisser, commencez sur une <strong>zone bleue</strong>. Sinon, touchez simplement la zone visée.');return;
+    const p=pointers.get(e.pointerId);if(!p)return;
+    e.preventDefault();pointers.delete(e.pointerId);
+    if(pinch){
+      if(pointers.size<2)pinch=null;
+      if(!pointers.size)preventTapAfterPinch=false;
+      return;
     }
+    if(preventTapAfterPinch){if(!pointers.size)preventTapAfterPinch=false;return;}
+    if(!running||!touched||touched.id!==e.pointerId)return;
+    const start=gridAt(touched.x,touched.y),end=gridAt(e.clientX,e.clientY);
+    const moved=p.moved||Math.hypot(e.clientX-touched.x,e.clientY-touched.y)>12;
+    touched=null;
+    if(end===null)return;
+    if(moved && zoom>1)return; // Drag = déplacement de la carte zoomée.
+    if(moved && (start===null||tiles[start]!==0))return;
     startCampaign(0,end,percent);
   });
-  canvas.addEventListener('pointercancel',()=>{touched=null;});
+  canvas.addEventListener('pointercancel',e=>{
+    pointers.delete(e.pointerId);touched=null;
+    if(pointers.size<2)pinch=null;
+    if(!pointers.size)preventTapAfterPinch=false;
+  });
+  $('zoomIn').addEventListener('click',()=>setZoom(zoom+.5));
+  $('zoomOut').addEventListener('click',()=>setZoom(zoom-.5));
   stopBtn.addEventListener('click',()=>{
     if(!campaigns[0])return;
     endCampaign(0);message('<strong>Offensive arrêtée.</strong> Les unités non utilisées ont retrouvé votre réserve.');render();
@@ -347,6 +435,8 @@
     clearInterval(timer);clearInterval(wavesTimer);clearInterval(botTimer);
     startArmyPositions();armies=[180,155,155];campaigns=[null,null,null];flashing.clear();
     running=true;timeLeft=GAME_LENGTH;percent=50;touched=null;lastMessage='';
+    pointers.clear();pinch=null;preventTapAfterPinch=false;zoom=1;offsetX=0;offsetY=0;
+    $('zoomLevel').textContent='100 %';$('zoomOut').disabled=true;$('zoomIn').disabled=false;
     $('result').classList.add('hidden');
     message('<strong>Front continu :</strong> touchez une zone à conquérir. Votre territoire s’étend automatiquement en une ligne de front.');
     timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,WAVE_MS);
@@ -355,7 +445,7 @@
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({tiles:[...tiles],counts:[...territoryCounts],size:[COLS,ROWS],armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({tiles:[...tiles],counts:[...territoryCounts],size:[COLS,ROWS],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),percent,timeLeft,running}),
       touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),step:tickWaves,tick,stop:endCampaign};
   }
   create();
