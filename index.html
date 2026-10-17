@@ -593,7 +593,7 @@
       offsetX=(a.x+b.x)/2-box.left-pinch.anchorX*zoom;
       offsetY=(a.y+b.y)/2-box.top-pinch.anchorY*zoom;
       clampCamera();$('zoomLevel').textContent=Math.round(zoom*100)+' %';
-      $('zoomOut').disabled=zoom<=1;$('zoomIn').disabled=zoom>=3;draw();
+      $('zoomOut').disabled=zoom<=1;$('zoomIn').disabled=zoom>=MAX_ZOOM;draw();
     }else if(pointers.size===1 && zoom>1 && p.moved && !preventTapAfterPinch){
       if(autoFollow){autoFollow=false;cameraTarget=null;updateCameraButtons();}
       offsetX+=p.x-prevX;offsetY+=p.y-prevY;clampCamera();draw();
