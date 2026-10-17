@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V0.5</title>
+  <title>Border Blitz — Prototype V0.6</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#3a4b5c; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
@@ -27,10 +27,9 @@
     .result{position:fixed;inset:0;background:#030911c9;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.result.hidden{display:none}.modal{width:min(100%,370px);padding:26px;border:1px solid #4b667e;border-radius:20px;background:linear-gradient(155deg,#21354b,#101b2b);text-align:center;box-shadow:0 30px 90px #000a}.modal .symbol{font-size:38px}.modal h2{font-size:27px;margin:10px 0}.modal p{line-height:1.5;color:#c3d4e6;font-size:14px}.primary{padding:13px 26px;border-radius:12px;background:#239ceb;color:#fff;font-weight:850;width:100%;margin-top:9px}
     @media (min-height:800px){.app{justify-content:space-between}.board-card{margin:auto 0}}
 
-    /* V0.5 — grille de calcul 4x plus fine, carte continue et front mobile */
+    /* V0.6 — carte 152 × 132, sans bande superposée au terrain */
     .board{display:block;position:relative;aspect-ratio:38/33;border-radius:14px;overflow:hidden;border:1px solid #486179;background:#263a4b;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
     .board canvas{width:100%;height:100%;display:block;touch-action:none}
-    .board .map-instructions{pointer-events:none;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:max-content;max-width:94%;background:#071521dd;border:1px solid #95cdfc45;padding:6px 10px;border-radius:9px;color:#d5eaff;font-size:11px;text-align:center;line-height:1.3}
     .war-row{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #2b4f6e;background:#15304b;border-radius:11px;padding:8px 10px;min-height:43px}
     .war-row .war-label{flex:1;font-size:12px;line-height:1.25;color:#d6e8ff}.war-label strong{display:block;color:#fff}
     .war-stop{flex:0 0 auto;background:#244a66;border:1px solid #528ab1;border-radius:9px;padding:8px 10px;font-weight:750;font-size:12px}
@@ -43,7 +42,7 @@
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.5 • FRONT PLUS FIN</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.6 • FRONT ULTRA FIN</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
   <section class="scoreboard" aria-label="Territoires des royaumes">
     <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small id="army0">0 unités</small><div class="bar" id="bar0"></div></div>
     <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small id="army1">0 unités</small><div class="bar" id="bar1"></div></div>
@@ -51,7 +50,7 @@
   </section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b>FAITES AVANCER LE FRONT</b><span class="clock" id="clock">02:00</span></div>
-    <div class="board" id="board"><canvas id="map" role="img" aria-label="Carte des royaumes. Touchez un territoire à conquérir pour lancer une offensive continue."></canvas><div class="map-instructions">Touchez une zone à conquérir : le front avance tout seul</div></div>
+    <div class="board" id="board"><canvas id="map" role="img" aria-label="Carte des royaumes. Touchez une zone à conquérir pour lancer une offensive continue."></canvas></div>
     <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span><i class="dot" style="background:#35a4f1"></i>Vous</span><span><i class="dot" style="background:#f46d74"></i>Rouge</span><span><i class="dot" style="background:#ecb65a"></i>Orange</span></div>
   </section>
   <section class="actions">
@@ -71,9 +70,9 @@
 (()=>{
   'use strict';
   // La grille n'est utilisée que pour les calculs : elle n'apparaît jamais à l'écran.
-  // 2 fois plus de subdivisions sur chaque axe = 4 fois plus de cellules.
+  // 4 fois plus de subdivisions par axe par rapport à la V0.4 = 16 fois plus de cellules.
   // La géométrie est affinée sans multiplier par quatre l'économie du jeu.
-  const DETAIL=2, AREA=DETAIL*DETAIL;
+  const DETAIL=4, AREA=DETAIL*DETAIL;
   const COLS=38*DETAIL, ROWS=33*DETAIL, TOTAL=COLS*ROWS;
   const GAME_LENGTH=120, MAX_ARMY=6500, WAVE_MS=220/DETAIL;
   const $=id=>document.getElementById(id);
@@ -191,11 +190,14 @@
     ctx.globalAlpha=1;
     // Marqueurs des royaumes : pas de nombres posés sur chaque case.
     const labels=['VOUS','ROUGE','ORANGE'];
+    const sumsX=[0,0,0],sumsY=[0,0,0],ns=[0,0,0];
+    for(let i=0;i<TOTAL;i++){
+      const owner=tiles[i];if(owner<0)continue;
+      sumsX[owner]+=i%COLS+.5;sumsY[owner]+=Math.floor(i/COLS)+.5;ns[owner]++;
+    }
     for(let owner=0;owner<3;owner++){
-      let sx=0,sy=0,n=0;
-      for(let i=0;i<TOTAL;i++)if(tiles[i]===owner){sx+=i%COLS+.5;sy+=Math.floor(i/COLS)+.5;n++;}
-      if(!n)continue;
-      const x=sx/n*dx,y=sy/n*dy;
+      if(!ns[owner])continue;
+      const x=sumsX[owner]/ns[owner]*dx,y=sumsY[owner]/ns[owner]*dy;
       const r=15;
       ctx.fillStyle='#0c1b2ad9';ctx.strokeStyle=['#9bdfff','#ffc0c8','#ffe2a5'][owner];ctx.lineWidth=1.5;
       ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
@@ -258,7 +260,10 @@
         armies[defender]=Math.max(0,armies[defender]-Math.max(1/AREA,guard*.65));
       }
       territoryCounts[owner]++;
-      tiles[target]=owner;flashing.set(target,performance.now());gained++;c.captured++;
+      tiles[target]=owner;
+      // Feedback visuel échantillonné pour ne pas surcharger le canvas sur iPhone.
+      if(target%DETAIL===0)flashing.set(target,performance.now());
+      gained++;c.captured++;
       if(defender>=0 && count(defender)===0){endCampaign(defender);armies[defender]=0;}
     }
     c.wait=gained===0?c.wait+1:0;
