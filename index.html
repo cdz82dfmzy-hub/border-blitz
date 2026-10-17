@@ -131,7 +131,7 @@
     if(x>0)a.push(i-1);if(x<COLS-1)a.push(i+1);
     if(y>0)a.push(i-COLS);if(y<ROWS-1)a.push(i+COLS);return a;};
   const count=owner=>territoryCounts[owner];
-  const prod=owner=>count(owner)?Math.max(3,Math.ceil(count(owner)*.18/AREA)):0;
+  const prod=owner=>count(owner)?Math.max(3,Math.ceil(1+.6*Math.sqrt(count(owner)/AREA))):0;
   const maximumCommit=(owner,pct)=>armies[owner]<2?0:Math.min(armies[owner]-1,Math.max(1,Math.floor(armies[owner]*pct/100)));
   const message=html=>{if(lastMessage!==html){hint.innerHTML=html;lastMessage=html;}};
   const nameFor=owner=>owner<0?'neutre':armyName[owner].toLowerCase();
@@ -528,15 +528,12 @@
     const neutral=edges.filter(i=>tiles[i]===NEUTRAL);
     const enemies=new Set();
     for(const i of edges)if(tiles[i]>=0&&tiles[i]!==owner)enemies.add(tiles[i]);
-    const danger=[...enemies].filter(other=>count(other)>0&&armies[owner]>Math.max(35,armies[other]*.75));
-    if(danger.length&&(!neutral.length||Math.random()<.24)){
+    const danger=[...enemies].filter(other=>count(other)>0&&armies[owner]>Math.max(45,armies[other]*1.18));
+    if(danger.length&&(GAME_LENGTH-timeLeft>45)&&(!neutral.length||Math.random()<.08)){
       danger.sort((a,b)=>armies[a]-armies[b]);
       const target=edges.find(i=>tiles[i]===danger[0]);startCampaign(owner,target,45);
-    }else if(neutral.length)startCampaign(owner,neutral[0],37);
-    else if(enemies.size&&armies[owner]>90){
-      const target=edges.find(i=>tiles[i]>=0&&tiles[i]!==owner);
-      if(target!==undefined)startCampaign(owner,target,35);
-    }
+    }else if(neutral.length)startCampaign(owner,neutral[0],31);
+    // Pas d'attaque forcée si le rapport de force est défavorable.
   }
   function tick(){
     if(!running)return;
@@ -651,7 +648,7 @@
     $('result').classList.add('hidden');
     message('<strong>50 ennemis !</strong> Le zoom suit automatiquement votre royaume. Touchez le bleu pour prendre les terres libres, ou un royaume ennemi pour l’attaquer.');
     timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,WAVE_MS);
-    botTimer=setInterval(()=>{for(let i=1;i<ACTIVE_REALMS;i++)bot(i);renderScore();},2100);
+    botTimer=setInterval(()=>{for(let i=1;i<ACTIVE_REALMS;i++)bot(i);renderScore();},3000);
     resize();render();
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
