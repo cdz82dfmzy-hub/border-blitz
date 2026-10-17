@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V0.2</title>
+  <title>Border Blitz — Prototype V0.3</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#3a4b5c; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
@@ -18,7 +18,7 @@
     .board-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 6px 8px}.board-head b{font-size:13px;color:#cad9eb}.clock{font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;color:#bfe8ff}
     .board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:clamp(3px,1vw,6px);aspect-ratio:1;user-select:none;-webkit-user-select:none;touch-action:none}
     .cell{width:100%;min-width:0;aspect-ratio:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;border-radius:clamp(5px,1.8vw,11px);border:1px solid #677b8d35;background:linear-gradient(145deg,#52616f,#303f50);box-shadow:inset 0 1px 1px #ffffff13,0 1px 3px #0005;transition:filter .12s,outline-color .12s,transform .12s;position:relative;padding:0;}
-    .cell .troops{font-size:clamp(9px,3vw,16px);font-variant-numeric:tabular-nums;line-height:1;font-weight:850;color:#fff;text-shadow:0 1px 2px #0008} .cell .star{font-size:clamp(7px,2.5vw,13px);color:#ffe1a1;line-height:1;text-shadow:0 1px 3px #17130b} .cell.player{background:linear-gradient(145deg,#3fbdff,#116db4);border-color:#9fe4ff70}.cell.red{background:linear-gradient(145deg,#ff8790,#ac384b);border-color:#ffc9c36e}.cell.orange{background:linear-gradient(145deg,#f6c476,#b27728);border-color:#ffe1a16e}.cell.selected{outline:3px solid #d8f4ff;outline-offset:1px;transform:scale(.96);z-index:2}.cell.target{box-shadow:inset 0 0 0 2px #cdefff84,0 0 13px #bfe8ff38}.cell:active{filter:brightness(1.25)}
+    .cell .troops{font-size:clamp(9px,3vw,16px);font-variant-numeric:tabular-nums;line-height:1;font-weight:850;color:#fff;text-shadow:0 1px 2px #0008} .cell.player{background:linear-gradient(145deg,#3fbdff,#116db4);border-color:#9fe4ff70}.cell.red{background:linear-gradient(145deg,#ff8790,#ac384b);border-color:#ffc9c36e}.cell.orange{background:linear-gradient(145deg,#f6c476,#b27728);border-color:#ffe1a16e}.cell.frontier{box-shadow:inset 0 0 0 2px #d1f1ffb0,0 0 8px #62b9f244}.cell.frontier:focus-visible{outline:3px solid #e7faff;outline-offset:1px;z-index:2}.cell.selected{outline:3px solid #d8f4ff;outline-offset:1px;transform:scale(.96);z-index:2}.cell.target{box-shadow:inset 0 0 0 2px #cdefff84,0 0 13px #bfe8ff38}.cell:active{filter:brightness(1.25)}
     .legend{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)} .dot{width:9px;height:9px;display:inline-block;border-radius:3px;margin-right:5px}.legend b{color:#f9dca0}
     .actions{border-radius:15px;border:1px solid #263a51;background:#101e30;padding:10px;display:flex;flex-direction:column;gap:9px}.actions-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.actions-top strong{font-size:13px}.actions-top span{font-size:12px;color:var(--muted)}
     .power-panel{display:flex;flex-direction:column;gap:5px}.power-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.power-heading output{font-size:24px;font-weight:900;color:#86d4ff;font-variant-numeric:tabular-nums}.power-adjust{display:flex;align-items:center;gap:9px}.power-step{flex:0 0 38px;height:38px;border-radius:11px;background:#1f344b;border:1px solid #46637d;font-size:23px;font-weight:700}.power-step:active{background:#28608e}.power-slider{flex:1;min-width:0;width:100%;height:40px;margin:0;cursor:pointer;appearance:none;-webkit-appearance:none;background:transparent;touch-action:pan-x}.power-slider::-webkit-slider-runnable-track{height:11px;border-radius:99px;background:linear-gradient(90deg,#49bbff 0%,#49bbff var(--fill),#354a60 var(--fill),#354a60 100%)}.power-slider::-moz-range-track{height:11px;border-radius:99px;background:#354a60}.power-slider::-moz-range-progress{height:11px;border-radius:99px;background:#49bbff}.power-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:29px;height:29px;margin-top:-9px;border:3px solid #e7f8ff;border-radius:50%;background:#1786d0;box-shadow:0 2px 9px #0008}.power-slider::-moz-range-thumb{width:24px;height:24px;border:3px solid #e7f8ff;border-radius:50%;background:#1786d0}.power-slider:focus-visible,.power-step:focus-visible{outline:3px solid #a4e3ff;outline-offset:3px}.power-extremes{display:flex;justify-content:space-between;color:#91adc7;font-size:11px;padding:0 48px;margin-top:-6px}.power-preview{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;border-radius:10px;background:#1a2e45;padding:7px 9px;font-size:12px;color:#b9d5eb}.power-preview strong{color:#f2faff;font-size:14px;font-variant-numeric:tabular-nums}.cell.drag-source{outline:3px solid #ffffff;outline-offset:1px;transform:scale(.96);z-index:3}.cell.drag-hover{box-shadow:inset 0 0 0 3px #fff8b2,0 0 16px #ffe4a075;z-index:3}
@@ -29,25 +29,25 @@
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.2 • SOLO HORS LIGNE</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.3 • ROYAUME COMMUN</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
   <section class="scoreboard" aria-label="Territoires possédés">
-    <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small>régions</small><div class="bar" id="bar0"></div></div>
-    <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small>régions</small><div class="bar" id="bar1"></div></div>
-    <div class="score orange"><small>🟠 ORANGE</small><strong id="score2">0</strong><small>régions</small><div class="bar" id="bar2"></div></div>
+    <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small id="army0">0 unités</small><div class="bar" id="bar0"></div></div>
+    <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small id="army1">0 unités</small><div class="bar" id="bar1"></div></div>
+    <div class="score orange"><small>🟠 ORANGE</small><strong id="score2">0</strong><small id="army2">0 unités</small><div class="bar" id="bar2"></div></div>
   </section>
   <section class="board-card" aria-label="Plateau de jeu">
-    <div class="board-head"><b>CONQUÊTE DES RÉGIONS</b><span class="clock" id="clock">02:00</span></div>
+    <div class="board-head"><b>UNE ARMÉE PAR ROYAUME</b><span class="clock" id="clock">02:00</span></div>
     <div class="board" id="board" role="group" aria-label="Carte de 64 régions"></div>
-    <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span><i class="dot" style="background:#35a4f1"></i>Vous</span><span><b>★</b> Région bonus : +2 unités</span></div>
+    <div class="legend"><span><i class="dot" style="background:#3a4b5c"></i>Neutre</span><span><i class="dot" style="background:#35a4f1"></i>Votre royaume</span><span><b>Contour clair</b> : attaquable</span></div>
   </section>
-  <section class="actions"><div class="power-panel"><div class="power-heading"><strong>PUISSANCE D’ATTAQUE</strong><output id="powerValue" for="powerSlider">50 %</output></div><div class="power-adjust"><button type="button" class="power-step" id="powerMinus" aria-label="Diminuer la puissance de 1 %">−</button><input class="power-slider" id="powerSlider" type="range" min="1" max="100" step="1" value="50" aria-label="Puissance d'attaque, de 1 à 100 pour cent"><button type="button" class="power-step" id="powerPlus" aria-label="Augmenter la puissance de 1 %">+</button></div><div class="power-extremes"><span>1 %</span><span>100 %</span></div><div class="power-preview" id="powerPreview" aria-live="off"><span id="previewSource">Sélectionne une région bleue</span><span id="previewUnits">Unités envoyées : <strong>—</strong></span></div></div><p class="hint" id="hint" aria-live="polite"><strong>À vous de jouer !</strong> Touchez une région bleue puis une voisine, ou glissez directement de l'une vers l'autre.</p></section>
-  <div class="footer">La carte produit des unités automatiquement. Gagnez en contrôlant le plus de régions après 2 minutes.</div>
+  <section class="actions"><div class="power-panel"><div class="power-heading"><strong>FORCE ENGAGÉE</strong><output id="powerValue" for="powerSlider">50 %</output></div><div class="power-adjust"><button type="button" class="power-step" id="powerMinus" aria-label="Diminuer la puissance de 1 %">−</button><input class="power-slider" id="powerSlider" type="range" min="1" max="100" step="1" value="50" aria-label="Puissance d'attaque, de 1 à 100 pour cent"><button type="button" class="power-step" id="powerPlus" aria-label="Augmenter la puissance de 1 %">+</button></div><div class="power-extremes"><span>1 %</span><span>100 %</span></div><div class="power-preview" id="powerPreview" aria-live="off"><span id="previewSource">Réserve commune</span><span id="previewUnits">Envoi : <strong>—</strong></span></div></div><p class="hint" id="hint" aria-live="polite"><strong>À vous de jouer !</strong> Touchez une case au contour clair pour l’attaquer. Toutes vos cases partagent la même armée.</p></section>
+  <div class="footer">Chaque région produit des unités pour votre royaume. Conquérez un maximum de cases en 2 minutes.</div>
 </main>
 <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="modal"><div class="symbol" id="resultSymbol">🏆</div><h2 id="resultTitle">Partie terminée</h2><p id="resultText"></p><button class="primary" id="playAgain">Nouvelle partie</button></div></div>
 <script>
 (()=>{
   'use strict';
-  const SIDE=8, TOTAL=SIDE*SIDE, GAME_LENGTH=120;
+  const SIDE=8, TOTAL=SIDE*SIDE, GAME_LENGTH=120, NEUTRAL_DEFENSE=7;
   const board=document.getElementById('board');
   const hint=document.getElementById('hint');
   const clock=document.getElementById('clock');
@@ -56,86 +56,105 @@
   const powerValue=document.getElementById('powerValue');
   const previewSource=document.getElementById('previewSource');
   const previewUnits=document.getElementById('previewUnits');
-  let regions=[], selected=null, percent=50, drag=null, timeLeft=GAME_LENGTH, running=false, interval=null, botTimer=null, elapsedTicks=0;
-  const unitsFor=(troops,pct)=>troops<2?0:Math.min(troops-1,Math.max(1,Math.floor(troops*pct/100)));
-  function powerUI(){
-    powerSlider.value=String(percent);powerValue.textContent=percent+' %';
-    powerSlider.style.setProperty('--fill',percent+'%');
-    const from=drag && regions[drag.from]?.owner===0 ? drag.from : selected;
-    if(from===null || from===undefined || regions[from]?.owner!==0){
-      previewSource.textContent='Sélectionne une région bleue';
-      previewUnits.innerHTML='Unités envoyées : <strong>—</strong>';
-    }else{
-      const total=regions[from].troops, qty=unitsFor(total,percent);
-      previewSource.textContent='Région '+(from+1)+' · '+total+' unités';
-      previewUnits.innerHTML='Envoyées : <strong>'+qty+'</strong> · Restantes : <strong>'+(total-qty)+'</strong>';
-    }
+  const initialSets=[[9,10,17,18],[45,46,53,54],[41,42,49,50]];
+  let regions=[], armies=[0,0,0], percent=50, drag=null;
+  let timeLeft=GAME_LENGTH, running=false, interval=null, botTimer=null;
+  const neighbors=i=>[i%SIDE>0?i-1:-1,i%SIDE<SIDE-1?i+1:-1,i>=SIDE?i-SIDE:-1,i<TOTAL-SIDE?i+SIDE:-1].filter(v=>v>=0);
+  const count=owner=>regions.filter(r=>r.owner===owner).length;
+  const unitsFor=(pool,pct)=>pool<2?0:Math.min(pool-1,Math.max(1,Math.floor(pool*pct/100)));
+  const message=html=>{hint.innerHTML=html;};
+  const hasNeighbor=(target,owner)=>neighbors(target).some(i=>regions[i].owner===owner);
+  const isFrontier=(target,owner)=>regions[target].owner!==owner && hasNeighbor(target,owner);
+  // Every conquered region belongs to its kingdom's common troop pool.
+  // No regional troops or individual production modifiers.
+  function defenseOf(target){
+    const defender=regions[target].owner;
+    if(defender===-1)return NEUTRAL_DEFENSE;
+    return 7+Math.min(14,Math.floor(armies[defender]/Math.max(6,count(defender)*2)));
   }
-  const initialSets=[ [9,10,17,18], [45,46,53,54], [41,42,49,50] ];
-  const neighbors=i=>[ i%SIDE>0?i-1:-1, i%SIDE<SIDE-1?i+1:-1, i>=SIDE?i-SIDE:-1, i<TOTAL-SIDE?i+SIDE:-1].filter(v=>v>=0);
-  const count=who=>regions.filter(r=>r.owner===who).length;
-  const sample=a=>a[Math.floor(Math.random()*a.length)];
-  const msg=(content)=>{hint.innerHTML=content};
+  function powerUI(){
+    powerSlider.value=String(percent);
+    powerValue.textContent=percent+' %';
+    powerSlider.style.setProperty('--fill',percent+'%');
+    const total=armies[0],send=unitsFor(total,percent);
+    previewSource.textContent='Royaume : '+total+' unités';
+    previewUnits.innerHTML='Attaque : <strong>'+send+'</strong> · Réserve : <strong>'+(total-send)+'</strong>';
+  }
   function create(){
-    regions=Array.from({length:TOTAL},(_,i)=>({owner:-1, troops:3+Math.floor(Math.random()*8), bonus:[7,15,23,30,34,39,48,58].includes(i)}));
-    initialSets.forEach((set,player)=>set.forEach(i=>{regions[i].owner=player;regions[i].troops=20+Math.floor(Math.random()*9)}));
-    for (const r of regions) if(r.owner<0 && r.bonus) r.troops+=7;
+    regions=Array.from({length:TOTAL},()=>({owner:-1}));
+    initialSets.forEach((set,owner)=>set.forEach(i=>{regions[i].owner=owner;}));
+    armies=[82,66,66];
     board.innerHTML='';
-    regions.forEach((r,i)=>{const el=document.createElement('button');el.className='cell';el.type='button';el.dataset.index=String(i);el.addEventListener('click',e=>{if(e.detail===0)tap(i)});board.appendChild(el)});
-    selected=null;drag=null;timeLeft=GAME_LENGTH; elapsedTicks=0;running=true;result.classList.add('hidden');
-    msg('<strong>À vous de jouer !</strong> Touchez une région bleue puis une voisine, ou glissez entre deux régions voisines.');
-    update(); clearInterval(interval);clearInterval(botTimer);
-    interval=setInterval(tick,1000);botTimer=setInterval(()=>{if(running){bot(1);bot(2);update();checkElimination()}},900);
+    regions.forEach((r,i)=>{
+      const el=document.createElement('button');el.className='cell';el.type='button';el.dataset.index=String(i);
+      el.addEventListener('click',e=>{if(e.detail===0)tap(i);});
+      board.appendChild(el);
+    });
+    drag=null;timeLeft=GAME_LENGTH;running=true;result.classList.add('hidden');
+    message('<strong>Royaume commun :</strong> touchez simplement une case entourée pour l’attaquer. Chaque territoire conquis renforce votre armée globale.');
+    clearInterval(interval);clearInterval(botTimer);
+    interval=setInterval(tick,1000);
+    botTimer=setInterval(()=>{if(running){bot(1);bot(2);checkElimination();update();}},1900);
+    update();
   }
   function update(){
     [...board.children].forEach((el,i)=>{
-      const r=regions[i];el.className='cell '+(r.owner===0?'player':r.owner===1?'red':r.owner===2?'orange':'neutral');
-      if(i===selected)el.classList.add('selected');
-      if(selected!==null && neighbors(selected).includes(i))el.classList.add('target');
+      const r=regions[i];
+      el.className='cell '+(r.owner===0?'player':r.owner===1?'red':r.owner===2?'orange':'neutral');
+      if(running && isFrontier(i,0))el.classList.add('frontier');
       if(drag?.from===i)el.classList.add('drag-source');
-      if(drag?.hover===i && drag.hover!==drag.from && neighbors(drag.from).includes(i))el.classList.add('drag-hover');
-      el.innerHTML=(r.bonus?'<span class="star">★</span>':'')+'<span class="troops">'+r.troops+'</span>';
-      el.setAttribute('aria-label',`Région ${i+1}, ${['vous','rouge','orange'][r.owner]||'neutre'}, ${r.troops} unités${r.bonus?', bonus':''}`);
-      el.setAttribute('aria-pressed',String(i===selected));
+      if(drag?.hover===i && r.owner!==0 && isFrontier(i,0))el.classList.add('drag-hover');
+      el.textContent='';
+      const label=r.owner===-1?'neutre':r.owner===0?'votre royaume':r.owner===1?'royaume rouge':'royaume orange';
+      el.setAttribute('aria-label',`Région ${i+1}, ${label}${r.owner!==0 && isFrontier(i,0)?', attaquable':''}`);
     });
-    for(let i=0;i<3;i++){const n=count(i);document.getElementById('score'+i).textContent=n;document.getElementById('bar'+i).style.width=100*n/TOTAL+'%'}
+    for(let i=0;i<3;i++){
+      const n=count(i);
+      document.getElementById('score'+i).textContent=n;
+      document.getElementById('army'+i).textContent=armies[i]+' unités';
+      document.getElementById('bar'+i).style.width=100*n/TOTAL+'%';
+    }
     clock.textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');
     powerUI();
   }
-  function move(from,to,pct){
-    if(!neighbors(from).includes(to))return false;
-    const origin=regions[from],target=regions[to];
-    if(origin.owner<0)return false;
-    const units=unitsFor(origin.troops,pct*100);
-    if(units<=0)return false;
-    origin.troops-=units;
-    if(target.owner===origin.owner)target.troops=Math.min(199,target.troops+units);
-    else if(units>target.troops){target.owner=origin.owner;target.troops=units-target.troops;}
-    else target.troops-=units;
-    return true;
+  function attack(owner,target,pct){
+    if(!running || regions[target].owner===owner || !hasNeighbor(target,owner) || count(owner)===0)return {status:'invalid'};
+    const pool=armies[owner],send=unitsFor(pool,pct),def=defenseOf(target),oldOwner=regions[target].owner;
+    if(send===0)return {status:'weak'};
+    if(send>def){
+      const losses=Math.min(pool-1,def+1+Math.ceil(send*.08));
+      armies[owner]-=losses;
+      if(oldOwner>=0)armies[oldOwner]=Math.max(0,armies[oldOwner]-def);
+      regions[target].owner=owner;
+      return {status:'win',sent:send,losses,def};
+    }
+    armies[owner]=Math.max(1,pool-send);
+    if(oldOwner>=0)armies[oldOwner]=Math.max(0,armies[oldOwner]-Math.ceil(send*.6));
+    return {status:'loss',sent:send,def};
   }
   function tap(i){
     if(!running)return;
-    const r=regions[i];
-    if(selected===null){
-      if(r.owner!==0){msg('Sélectionnez d’abord <strong>une région bleue</strong>.');return;}
-      selected=i;msg('Région sélectionnée : <strong>'+r.troops+' unités</strong>. Touchez une case voisine.');
-    }else if(i===selected){selected=null;msg('Sélection annulée. Choisissez une région bleue.');}
-    else if(r.owner===0 && !neighbors(selected).includes(i)){selected=i;msg('Nouvelle région sélectionnée : <strong>'+r.troops+' unités</strong>.');}
-    else if(neighbors(selected).includes(i)){
-      const ok=move(selected,i,percent/100);
-      selected=null;
-      msg(ok?'<strong>Mouvement effectué !</strong> Continuez votre expansion.':'Pas assez d’unités. Attendez que votre région se renforce.');
+    if(regions[i].owner===0){
+      message('Toutes les <strong>cases bleues</strong> partagent '+armies[0]+' unités. Touchez directement une case entourée pour l’attaquer.');
+    }else if(!isFrontier(i,0)){
+      message('Cette région est trop loin : attaquez une <strong>case au contour clair</strong>, voisine de votre royaume.');
+    }else{
+      describe(attack(0,i,percent));
       checkElimination();
-    } else msg('Cible trop éloignée : sélectionnez <strong>une case adjacente</strong>.');
+    }
     update();
   }
-  // Deux commandes coexistantes : toucher-deux-fois et glisser-relâcher.
-  // Pointer Events gèrent souris, stylet et écran tactile avec une seule logique.
+  function describe(result){
+    if(result.status==='weak')message('Votre armée est trop faible. Attendez que les unités se régénèrent.');
+    else if(result.status==='win')message('<strong>Région conquise !</strong> '+result.losses+' unités perdues sur '+result.sent+' engagées ; le reste revient au royaume.');
+    else if(result.status==='loss')message('<strong>Attaque repoussée !</strong> '+result.sent+' unités engagées, défense adverse : '+result.def+'. Augmentez la jauge ou attendez.');
+    else message('Attaque impossible : choisissez une case voisine de votre royaume.');
+  }
   function cellAt(x,y){
     const el=document.elementFromPoint(x,y)?.closest('.cell');
-    return el && el.parentElement===board ? Number(el.dataset.index) : null;
+    return el && el.parentElement===board?Number(el.dataset.index):null;
   }
+  // One-tap attack on any adjacent non-owned region, plus optional drag from any blue region.
   board.addEventListener('pointerdown',e=>{
     if(!running || (e.pointerType==='mouse' && e.button!==0) || drag)return;
     const el=e.target.closest('.cell');if(!el || el.parentElement!==board)return;
@@ -147,7 +166,7 @@
     if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>12)drag.moved=true;
     if(!drag.moved)return;
     const hover=cellAt(e.clientX,e.clientY);
-    if(drag.hover!==hover){drag.hover=hover;update();}
+    if(hover!==drag.hover){drag.hover=hover;update();}
   });
   window.addEventListener('pointerup',e=>{
     if(!drag || e.pointerId!==drag.id)return;
@@ -157,44 +176,51 @@
     drag=null;
     if(!running){update();return;}
     if(!wasDrag){tap(from);return;}
-    if(regions[from].owner!==0)msg('Pour glisser, partez d’une <strong>région bleue</strong>.');
-    else if(end===null)msg('Déplacement annulé : relâchez sur une région voisine.');
-    else if(!neighbors(from).includes(end))msg('Cible trop éloignée : glissez vers <strong>une région voisine</strong>.');
-    else{
-      const ok=move(from,end,percent/100);
-      selected=null;
-      msg(ok?'<strong>Mouvement effectué !</strong> Glissez à nouveau pour continuer.':'Pas assez d’unités dans cette région.');
-      checkElimination();
-    }
+    if(regions[from].owner!==0)message('Pour glisser, partez de <strong>n’importe quelle case bleue</strong>.');
+    else if(end===null)message('Geste annulé. Relâchez sur une case du plateau.');
+    else if(!isFrontier(end,0))message('Glissez sur une case <strong>voisine de votre royaume</strong>.');
+    else{describe(attack(0,end,percent));checkElimination();}
     update();
   });
   window.addEventListener('pointercancel',e=>{if(drag && e.pointerId===drag.id){drag=null;update();}});
   function bot(owner){
-    const owned=regions.map((r,i)=>r.owner===owner?i:-1).filter(i=>i>=0);
-    if(!owned.length)return;
-    const attacking=owned.flatMap(i=>neighbors(i).filter(j=>regions[j].owner!==owner && regions[i].troops>regions[j].troops*1.35+3).map(j=>({i,j,score:regions[i].troops-regions[j].troops+(regions[j].bonus?8:0)+Math.random()*12})));
-    if(attacking.length){attacking.sort((a,b)=>b.score-a.score);const {i,j}=attacking[0];move(i,j,regions[i].troops>regions[j].troops*2?0.65:1);return;}
-    const transfer=owned.filter(i=>regions[i].troops>35 && neighbors(i).some(j=>regions[j].owner===owner && neighbors(j).some(k=>regions[k].owner!==owner)));
-    if(transfer.length){const i=sample(transfer);const j=sample(neighbors(i).filter(j=>regions[j].owner===owner && neighbors(j).some(k=>regions[k].owner!==owner)));if(j!==undefined)move(i,j,0.5)}
+    if(count(owner)===0 || armies[owner]<=9)return;
+    const targetList=regions.map((r,i)=>isFrontier(i,owner)?i:-1).filter(i=>i>=0);
+    if(!targetList.length)return;
+    const eligible=targetList.filter(i=>armies[owner]>defenseOf(i)+3);
+    if(!eligible.length)return;
+    const neutral=eligible.filter(i=>regions[i].owner===-1);
+    const candidates=neutral.length ? neutral : eligible;
+    const target=candidates[Math.floor(Math.random()*candidates.length)];
+    const need=defenseOf(target)+5;
+    const pct=Math.min(100,Math.max(1,Math.ceil(need/armies[owner]*100)));
+    attack(owner,target,pct);
   }
   function tick(){
     if(!running)return;
-    elapsedTicks++;
-    for(const r of regions){if(r.owner>=0)r.troops=Math.min(199,r.troops+(r.bonus?2:1))}
+    for(let owner=0;owner<3;owner++){
+      const held=count(owner);
+      if(held)armies[owner]=Math.min(9999,armies[owner]+Math.max(2,Math.ceil(held*.8)));
+    }
     timeLeft=Math.max(0,timeLeft-1);
     if(timeLeft===0)finish();else checkElimination();
     update();
   }
-  function checkElimination(){if(!running)return;const alive=[0,1,2].filter(i=>count(i)>0);if(alive.length<=1)finish();}
+  function checkElimination(){
+    if(!running)return;
+    if(count(0)===0 || [1,2].every(i=>count(i)===0))finish();
+  }
   function finish(){
     if(!running)return;
     running=false;clearInterval(interval);clearInterval(botTimer);
-    const scores=[0,1,2].map(count), max=Math.max(...scores), winners=scores.map((v,i)=>v===max?i:-1).filter(v=>v>=0);
+    const scores=[0,1,2].map(count),max=Math.max(...scores);
+    const winners=scores.map((v,i)=>v===max?i:-1).filter(i=>i>=0);
     const victory=winners.length===1 && winners[0]===0;
     document.getElementById('resultSymbol').textContent=victory?'🏆':winners.length>1?'⚖️':'⚔️';
     document.getElementById('resultTitle').textContent=victory?'Victoire !':winners.length>1?'Égalité':'Partie terminée';
-    document.getElementById('resultText').textContent=`Vous contrôlez ${scores[0]} régions sur ${TOTAL}. Rouge : ${scores[1]}. Orange : ${scores[2]}. ${victory?'Vous dominez la carte !':'Essayez de conquérir les régions bonus ★ plus tôt.'}`;
+    document.getElementById('resultText').textContent=`Vous contrôlez ${scores[0]} régions sur ${TOTAL}. Rouge : ${scores[1]}. Orange : ${scores[2]}. ${victory?'Votre royaume domine la carte !':'Ajustez la jauge et attaquez directement les cases au contour clair.'}`;
     result.classList.remove('hidden');
+    update();
   }
   powerSlider.addEventListener('input',()=>{percent=Number(powerSlider.value);powerUI();});
   document.getElementById('powerMinus').addEventListener('click',()=>{percent=Math.max(1,percent-1);powerUI();});
