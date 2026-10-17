@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V0.4</title>
+  <title>Border Blitz — Prototype V0.5</title>
   <style>
     :root { color-scheme:dark; --bg:#091322; --panel:#121e30; --edge:#223448; --text:#eef4ff; --muted:#93a8c1; --blue:#35a4f1; --red:#f46d74; --amber:#ecb65a; --neutral:#3a4b5c; --accent:#b1e2ff; }
     * {box-sizing:border-box} html,body{margin:0; min-height:100%; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text);background:radial-gradient(ellipse at top,#1a2d43 0%,#0c1828 43%,#08111e 100%)}
@@ -27,7 +27,7 @@
     .result{position:fixed;inset:0;background:#030911c9;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.result.hidden{display:none}.modal{width:min(100%,370px);padding:26px;border:1px solid #4b667e;border-radius:20px;background:linear-gradient(155deg,#21354b,#101b2b);text-align:center;box-shadow:0 30px 90px #000a}.modal .symbol{font-size:38px}.modal h2{font-size:27px;margin:10px 0}.modal p{line-height:1.5;color:#c3d4e6;font-size:14px}.primary{padding:13px 26px;border-radius:12px;background:#239ceb;color:#fff;font-weight:850;width:100%;margin-top:9px}
     @media (min-height:800px){.app{justify-content:space-between}.board-card{margin:auto 0}}
 
-    /* V0.4 — carte continue, grille interne invisible et ligne de front mobile */
+    /* V0.5 — grille de calcul 4x plus fine, carte continue et front mobile */
     .board{display:block;position:relative;aspect-ratio:38/33;border-radius:14px;overflow:hidden;border:1px solid #486179;background:#263a4b;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
     .board canvas{width:100%;height:100%;display:block;touch-action:none}
     .board .map-instructions{pointer-events:none;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:max-content;max-width:94%;background:#071521dd;border:1px solid #95cdfc45;padding:6px 10px;border-radius:9px;color:#d5eaff;font-size:11px;text-align:center;line-height:1.3}
@@ -43,7 +43,7 @@
 </head>
 <body>
 <main class="app">
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.4 • LIGNE DE FRONT</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">PROTOTYPE V0.5 • FRONT PLUS FIN</span></div><button class="outline" id="restart" aria-label="Recommencer une partie">↻ Rejouer</button></header>
   <section class="scoreboard" aria-label="Territoires des royaumes">
     <div class="score player"><small>🔵 VOUS</small><strong id="score0">0</strong><small id="army0">0 unités</small><div class="bar" id="bar0"></div></div>
     <div class="score red"><small>🔴 ROUGE</small><strong id="score1">0</strong><small id="army1">0 unités</small><div class="bar" id="bar1"></div></div>
@@ -71,13 +71,17 @@
 (()=>{
   'use strict';
   // La grille n'est utilisée que pour les calculs : elle n'apparaît jamais à l'écran.
-  const COLS=38, ROWS=33, TOTAL=COLS*ROWS, GAME_LENGTH=120, MAX_ARMY=6500;
+  // 2 fois plus de subdivisions sur chaque axe = 4 fois plus de cellules.
+  // La géométrie est affinée sans multiplier par quatre l'économie du jeu.
+  const DETAIL=2, AREA=DETAIL*DETAIL;
+  const COLS=38*DETAIL, ROWS=33*DETAIL, TOTAL=COLS*ROWS;
+  const GAME_LENGTH=120, MAX_ARMY=6500, WAVE_MS=220/DETAIL;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
   const hint=$('hint'), slider=$('powerSlider'), stopBtn=$('stopAttack');
   const rgb=['#35a4f1','#f46d74','#ecb65a','#354759'];
   const armyName=['Bleu','Rouge','Orange'];
-  let tiles=new Int8Array(TOTAL), armies=[180,155,155], campaigns=[null,null,null];
+  let tiles=new Int8Array(TOTAL), territoryCounts=[0,0,0], armies=[180,155,155], campaigns=[null,null,null];
   let percent=50, timeLeft=GAME_LENGTH, running=false, timer=null, wavesTimer=null, botTimer=null;
   let flashing=new Map(), touched=null, mapW=370, mapH=330, lastMessage='';
   const index=(x,y)=>y*COLS+x;
@@ -85,8 +89,8 @@
   const near=i=>{const x=i%COLS,y=Math.floor(i/COLS),a=[];
     if(x>0)a.push(i-1);if(x<COLS-1)a.push(i+1);
     if(y>0)a.push(i-COLS);if(y<ROWS-1)a.push(i+COLS);return a;};
-  const count=owner=>{let n=0;for(const t of tiles)if(t===owner)n++;return n;};
-  const prod=owner=>count(owner)?Math.max(3,Math.ceil(count(owner)*.18)):0;
+  const count=owner=>territoryCounts[owner];
+  const prod=owner=>count(owner)?Math.max(3,Math.ceil(count(owner)*.18/AREA)):0;
   const maximumCommit=(owner,pct)=>armies[owner]<2?0:Math.min(armies[owner]-1,Math.max(1,Math.floor(armies[owner]*pct/100)));
   const message=html=>{if(lastMessage!==html){hint.innerHTML=html;lastMessage=html;}};
   const nameFor=owner=>owner<0?'neutre':owner===0?'bleu':owner===1?'rouge':'orange';
@@ -96,19 +100,23 @@
     const result=[];
     for(let i=0;i<TOTAL;i++){
       if(tiles[i]===owner)continue;
-      if(near(i).some(j=>tiles[j]===owner))result.push(i);
+      const x=i%COLS,y=(i/COLS)|0;
+      if((x>0&&tiles[i-1]===owner)||(x<COLS-1&&tiles[i+1]===owner)||
+         (y>0&&tiles[i-COLS]===owner)||(y<ROWS-1&&tiles[i+COLS]===owner))result.push(i);
     }
     return result;
   }
   function centers(i){return {x:(i%COLS+.5)/COLS,y:(Math.floor(i/COLS)+.5)/ROWS};}
   function startArmyPositions(){
-    tiles.fill(-1);
+    tiles.fill(-1);territoryCounts.fill(0);
     const spots=[[9,10],[29,10],[19,26]];
     for(let i=0;i<TOTAL;i++){
       const x=i%COLS,y=Math.floor(i/COLS);
       for(let owner=0;owner<3;owner++){
         const [sx,sy]=spots[owner];
-        if(((x-sx)/4.5)**2+((y-sy)/4.2)**2<=1){tiles[i]=owner;break;}
+        if(((x-(sx+.5)*DETAIL)/(4.5*DETAIL))**2+((y-(sy+.5)*DETAIL)/(4.2*DETAIL))**2<=1){
+          tiles[i]=owner;territoryCounts[owner]++;break;
+        }
       }
     }
   }
@@ -118,17 +126,17 @@
     const sent=maximumCommit(0,percent);
     $('previewSource').textContent='Armée : '+Math.floor(armies[0])+' unités';
     $('previewUnits').innerHTML='À engager : <strong>'+sent+'</strong> · Réserve : <strong>'+(armies[0]-sent)+'</strong>';
-    $('totalArmy').textContent=armies[0];$('production').textContent='+'+prod(0)+' / sec';
+    $('totalArmy').textContent=Math.floor(armies[0]);$('production').textContent='+'+prod(0)+' / sec';
   }
   function renderWar(){
     const c=campaigns[0];stopBtn.disabled=!running||!c;
-    $('warLabel').innerHTML=c?'<strong>⚔ Offensive en cours</strong> '+c.captured+' zones gagnées · '+Math.ceil(c.budget)+' unités en attaque'
+    $('warLabel').innerHTML=c?'<strong>⚔ Offensive en cours</strong> '+(c.captured*100/TOTAL).toFixed(1)+' % gagné · '+Math.ceil(c.budget)+' unités en attaque'
       :'<strong>Prêt à attaquer</strong> Touchez une zone ennemie ou neutre.';
   }
   function renderScore(){
     for(let i=0;i<3;i++){
-      const n=count(i);$('score'+i).textContent=n;
-      $('army'+i).textContent=armies[i]+' unités';
+      const n=count(i);$('score'+i).textContent=Math.round(100*n/TOTAL)+' %';
+      $('army'+i).textContent=Math.floor(armies[i])+' unités';
       $('bar'+i).style.width=(100*n/TOTAL)+'%';
     }
     $('clock').textContent=String(Math.floor(timeLeft/60)).padStart(2,'0')+':'+String(timeLeft%60).padStart(2,'0');
@@ -146,10 +154,16 @@
     ctx.clearRect(0,0,mapW,mapH);
     ctx.fillStyle='#304455';ctx.fillRect(0,0,mapW,mapH);
     // Le remplissage joint les territoires sans espacement ni contour de case.
-    for(let i=0;i<TOTAL;i++){
-      const x=(i%COLS)*dx,y=Math.floor(i/COLS)*dy,owner=tiles[i];
-      ctx.fillStyle=rgb[owner<0?3:owner];
-      ctx.fillRect(x-.18,y-.18,dx+.36,dy+.36);
+    // Dessiner des bandes contiguës réduit fortement les appels Canvas sur mobile.
+    for(let row=0;row<ROWS;row++){
+      const base=row*COLS;
+      for(let x=0;x<COLS;){
+        const owner=tiles[base+x];let end=x+1;
+        while(end<COLS && tiles[base+end]===owner)end++;
+        ctx.fillStyle=rgb[owner<0?3:owner];
+        ctx.fillRect(x*dx-.12,row*dy-.12,(end-x)*dx+.24,dy+.24);
+        x=end;
+      }
     }
     // Ligne extérieure de chaque royaume, continue même sur une grande frontière.
     for(let owner=0;owner<3;owner++){
@@ -162,7 +176,7 @@
         if(i<COLS||tiles[i-COLS]!==owner){ctx.moveTo(x,y);ctx.lineTo(x+dx,y);}
         if(i>=TOTAL-COLS||tiles[i+COLS]!==owner){ctx.moveTo(x,y+dy);ctx.lineTo(x+dx,y+dy);}
       }
-      ctx.lineWidth=1.65;ctx.strokeStyle=['#a1e4ff','#ffb6bd','#ffe0a1'][owner];
+      ctx.lineWidth=1.2;ctx.strokeStyle=['#a1e4ff','#ffb6bd','#ffe0a1'][owner];
       ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
     }
     // Les zones récemment conquises clignotent brièvement : sensation d'avancée.
@@ -182,7 +196,7 @@
       for(let i=0;i<TOTAL;i++)if(tiles[i]===owner){sx+=i%COLS+.5;sy+=Math.floor(i/COLS)+.5;n++;}
       if(!n)continue;
       const x=sx/n*dx,y=sy/n*dy;
-      const r=Math.min(18,Math.max(11,dx*1.7));
+      const r=15;
       ctx.fillStyle='#0c1b2ad9';ctx.strokeStyle=['#9bdfff','#ffc0c8','#ffe2a5'][owner];ctx.lineWidth=1.5;
       ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
@@ -208,9 +222,9 @@
     render();return true;
   }
   function costs(owner,target){
-    const defender=tiles[target];if(defender<0)return 2;
-    const density=armies[defender]/Math.max(12,count(defender));
-    return Math.max(3,Math.min(12,Math.ceil(3+density*.65)));
+    const defender=tiles[target];if(defender<0)return 2/AREA;
+    const density=armies[defender]/Math.max(12,count(defender)/AREA);
+    return Math.max(3,Math.min(12,Math.ceil(3+density*.65)))/AREA;
   }
   function selectWave(owner,c){
     const edges=frontier(owner);
@@ -224,7 +238,7 @@
     const closeness=i=>{const p=centers(i);return Math.hypot(p.x-aim.x,p.y-aim.y);};
     eligible.sort((a,b)=>closeness(a)-closeness(b));
     // Large bande : le front progresse en plusieurs points, pas par un clic/case.
-    const width=Math.max(3,Math.min(20,Math.round(Math.sqrt(c.initial)*1.45)));
+    const width=DETAIL*Math.max(3,Math.min(20,Math.round(Math.sqrt(c.initial)*1.45)));
     // Élargissement après chaque vague, sans franchir de zone non adjacente.
     const take=Math.min(eligible.length,width);
     return eligible.slice(0,take);
@@ -239,14 +253,18 @@
       if(c.budget<guard)break;
       const defender=tiles[target];
       c.budget-=guard;
-      if(defender>=0){armies[defender]=Math.max(0,armies[defender]-Math.max(1,Math.ceil(guard*.65)));}
+      if(defender>=0){
+        territoryCounts[defender]--;
+        armies[defender]=Math.max(0,armies[defender]-Math.max(1/AREA,guard*.65));
+      }
+      territoryCounts[owner]++;
       tiles[target]=owner;flashing.set(target,performance.now());gained++;c.captured++;
       if(defender>=0 && count(defender)===0){endCampaign(defender);armies[defender]=0;}
     }
     c.wait=gained===0?c.wait+1:0;
-    if(c.budget<2||c.wait>=2||!frontier(owner).length)endCampaign(owner);
-    if(owner===0 && gained>0 && (!campaigns[owner]||c.captured%22===0)){
-      message('<strong>Le front avance !</strong> '+c.captured+' zones conquises pendant cette offensive.');
+    if(c.budget<2/AREA||c.wait>=2||!frontier(owner).length)endCampaign(owner);
+    if(owner===0 && gained>0 && (!campaigns[owner]||c.captured%(22*AREA)===0)){
+      message('<strong>Le front avance !</strong> '+(c.captured*100/TOTAL).toFixed(1)+' % de la carte gagnée pendant cette offensive.');
     }
     checkEnd();
   }
@@ -326,13 +344,13 @@
     running=true;timeLeft=GAME_LENGTH;percent=50;touched=null;lastMessage='';
     $('result').classList.add('hidden');
     message('<strong>Front continu :</strong> touchez une zone à conquérir. Votre territoire s’étend automatiquement en une ligne de front.');
-    timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,220);
+    timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,WAVE_MS);
     botTimer=setInterval(()=>{bot(1);bot(2);render();},2600);
     resize();render();
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({tiles:[...tiles],armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({tiles:[...tiles],counts:[...territoryCounts],size:[COLS,ROWS],armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),percent,timeLeft,running}),
       touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),step:tickWaves,tick,stop:endCampaign};
   }
   create();
