@@ -192,6 +192,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 
 /* Zoom extrême: le pourcentage devient une indication courte 10×…64×. */
 .map-tools output{min-width:38px;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* V3.3 : dernier mot sur la position du compteur de fronts, y compris
+   avec le panneau de combat ouvert et sur iPhone en mode portrait. */
+.board-card .board-head .combat-toggle,
+.board-card.combat-open .board-head .combat-toggle{
+  position:relative;top:auto;bottom:auto;left:auto;right:auto;
+  height:34px;margin:0;transform:none;box-shadow:none
+}
 </style>
 </head>
 <body>
@@ -1759,6 +1766,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     // Crédit fractionnaire : une force inférieure peut avancer une fois tous
     // les deux battements, une armée écrasante franchit plusieurs rangées.
+    // Le plafond global protège les FPS. Une IA reportée au tick suivant
+    // conserve son offensive au lieu d'être classée comme bloquée.
+    if(capturedThisWaveTick>=(ACTIVE_REALMS>=200?15000:18000))return;
     c.advanceCredit=Math.min(9,(c.advanceCredit||0)+frontSpeed(owner,c));
     const passes=Math.min(owner===0?7:5,Math.floor(c.advanceCredit));
     if(!passes)return;
