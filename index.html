@@ -670,7 +670,6 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(islands.length+1));
-    buildTerrainDepth();
     buildSeaNavigation();
   }
 
@@ -737,7 +736,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     $('mapPreviewBox').hidden=false;
   }
   function previewWorld(){
-    if(!$('mainMenu').hidden){configureWorld();generateTerrain();drawPreview();}
+    if(!$('mainMenu').hidden){configureWorld();generateTerrain();buildTerrainDepth();drawPreview();}
   }
   function buildSeaNavigation(){
     // Chaque masse d'eau est identifiée séparément : un bateau sur l'océan
