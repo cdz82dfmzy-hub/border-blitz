@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.6</title>
+  <title>Border Blitz — Prototype V3.7</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -150,9 +150,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
  border-radius:18px;font-size:31px}
 .menu-logo{font-size:clamp(32px,8vw,46px);font-weight:950;letter-spacing:.06em;white-space:nowrap}
 .menu-logo em{font-style:normal;color:#70c8ff}.menu-subtitle{font-size:10px;letter-spacing:.23em;font-weight:800;color:#b5d9ee}
-.menu-card{display:flex;flex-direction:column;gap:10px;padding:18px;background:#142e45ed;
+.menu-card{display:flex;flex-direction:column;gap:9px;padding:15px;background:#142e45ed;
  border:1px solid #5282a2;border-radius:17px;box-shadow:0 18px 35px #0008}
-.menu-card h1{font-size:22px;margin:0}.menu-card p{font-size:12px;color:#b9d7e9;margin:0;line-height:1.4}
+.menu-card h1{font-size:22px;margin:0 0 3px}.menu-card p{font-size:12px;color:#b9d7e9;margin:0;line-height:1.4}
 .menu-label{font-size:10px;letter-spacing:.12em;color:#bbd9ec;font-weight:900}
 .menu-setting{display:flex;align-items:center;justify-content:space-between;gap:9px;
  border-bottom:1px solid #33566f;min-height:40px;font-size:12px;font-weight:750}
@@ -161,7 +161,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 .menu-setting select{min-width:85px;max-width:57%;padding:9px 5px;background:#25445c;color:white;
  border:1px solid #628ba7;border-radius:8px;font-size:11px}
 .difficulty-info{font-size:10px;line-height:1.4;padding:5px 7px;color:#acd3e8;background:#142b41;border:1px solid #305773;border-radius:7px}
-.menu-map{display:flex;flex-direction:column;gap:7px;border-top:1px solid #33566f;padding-top:7px}
+.menu-map{display:flex;flex-direction:column;gap:7px;border-top:1px solid #33566f;padding-top:12px}
 .menu-map>select{width:100%;min-height:35px;padding:8px 9px;border-radius:9px;border:1px solid #6798ba;
  background:#1f4763;color:#eef9ff;font-size:12px;font-weight:800}
 .seed-row{display:flex;align-items:center;gap:6px}
@@ -177,6 +177,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 #previewCaption{text-align:center;padding:7px;color:#c3e3f5;font-size:11px;font-weight:800}
 .menu-info{text-align:center;padding:9px 5px;background:#1b405a;color:#c2e4f7;border:1px solid #356482;
  border-radius:9px;font-size:11px;font-weight:750}
+.menu-hint{font-size:11px;color:#9fc5dd;margin-top:-7px}
+.main-player-setting{min-height:50px;font-size:14px}
+.main-player-setting input{font-size:19px;width:98px;height:45px}
+.advanced-settings{border:1px solid #416984;border-radius:10px;background:#142d44}
+.advanced-settings summary{min-height:39px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;
+ list-style:none;cursor:pointer;color:#c6e5f8;font-size:12px;font-weight:800}
+.advanced-settings summary::-webkit-details-marker{display:none}
+.advanced-settings[open] .summary-chevron{transform:rotate(180deg)}
+.advanced-fields{display:flex;flex-direction:column;gap:6px;padding:4px 12px 11px;border-top:1px solid #33566f}
+.advanced-note{font-size:10px;line-height:1.4;color:#9cc2d8;padding-top:3px}
+.menu-compact-info{text-align:center;font-size:10px;color:#aacfe7;margin:0}
 .menu-primary,.menu-secondary{height:45px;border-radius:10px;font-size:14px;font-weight:900}
 .menu-primary{background:#2092d4;color:white}.menu-secondary{background:#254b68;border:1px solid #6897b6}
 .menu-secondary:disabled{opacity:.43}.saved-info{min-height:15px;text-align:center;font-size:11px;color:#a9cadd}
@@ -198,7 +209,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.6 • JUSQU’À 500 JOUEURS</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.7 • MENU & FLUIDITÉ</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><button type="button" id="combatToggle" class="combat-toggle" aria-controls="combatPanel" aria-expanded="false" aria-label="Ouvrir les commandes de combat">⚔ 50 %</button><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -222,10 +233,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 <div class="menu-shell">
 <div class="menu-brand"><div class="menu-symbol">⚔</div><div class="menu-logo">BORDER <em>BLITZ</em></div><div class="menu-subtitle">CONQUÊTE DE TERRITOIRES</div></div>
 <div class="menu-card">
-<h1>Nouvelle partie</h1><p>Prépare ta conquête : choisis ta carte et règle la bataille.</p>
-<div class="menu-label">NOMBRE DE JOUEURS</div>
-<div class="menu-setting"><label for="playerCount">Nombre de joueurs (vous inclus)</label><input id="playerCount" type="number" min="1" max="500" step="1" value="50" inputmode="numeric" aria-label="Nombre total de joueurs de 1 à 500" /></div>
-<div id="playerCountInfo" class="difficulty-info">50 joueurs = vous + 49 IA</div>
+<h1>Nouvelle partie</h1>
+<div class="menu-setting main-player-setting"><label for="playerCount">Joueurs</label><input id="playerCount" type="number" min="1" max="500" step="1" value="50" inputmode="numeric" aria-label="Nombre total de joueurs de 1 à 500" /></div>
+<div id="playerCountInfo" class="menu-hint">Vous + 49 IA · 50 places</div>
 <div class="menu-map">
  <div class="menu-label">TYPE DE CARTE</div>
  <select id="mapPreset" aria-label="Choisir le style de carte">
@@ -244,27 +254,33 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
  <option value="lagoon">Mers intérieures</option>
  <option value="snow">Montagnes enneigées</option>
  </select>
- <div class="seed-row"><label for="mapSeed">SEED</label>
-  <input id="mapSeed" type="number" min="0" max="4294967295" step="1" inputmode="numeric" placeholder="Aléatoire"/>
-  <button type="button" id="randomSeed" aria-label="Nouvelle graine aléatoire">🎲</button>
- </div>
+
  <button type="button" id="previewMap" class="preview-button">Aperçu de la carte</button>
  <div id="mapPreviewBox" class="map-preview" hidden>
   <canvas id="mapPreview" width="270" height="210" aria-label="Aperçu du relief côtier"></canvas>
   <div id="previewCaption">Aperçu</div>
  </div>
 </div>
-<div class="menu-setting"><label for="matchDuration">Durée de la bataille</label><select id="matchDuration"><option value="auto" selected>Automatique</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="20">20 minutes</option></select></div>
 <div class="menu-setting"><label for="aiDifficulty">Difficulté des IA</label>
 <select id="aiDifficulty" aria-label="Niveau des adversaires"><option value="easy">Facile</option><option value="normal" selected>Normal</option><option value="hard">Difficile</option></select></div>
-<div id="difficultyInfo" class="difficulty-info">Équilibré · Des IA variées, des offensives progressives.</div>
-<div class="menu-setting"><label for="initialPower">Puissance d’attaque initiale</label><select id="initialPower"><option value="25">25 %</option><option value="50" selected>50 %</option><option value="75">75 %</option><option value="100">100 %</option></select></div>
-<div id="modeInfo" class="menu-info">50 royaumes · 10 minutes · Grande carte</div>
+<details id="advancedSettings" class="advanced-settings">
+ <summary><span>⚙ Réglages avancés</span><span class="summary-chevron">⌄</span></summary>
+ <div class="advanced-fields">
+  <div class="menu-setting"><label for="matchDuration">Durée de la bataille</label><select id="matchDuration"><option value="auto" selected>Automatique</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="20">20 minutes</option></select></div>
+  <div class="menu-setting"><label for="initialPower">Puissance d’attaque initiale</label><select id="initialPower"><option value="25">25 %</option><option value="50" selected>50 %</option><option value="75">75 %</option><option value="100">100 %</option></select></div>
+  <div class="seed-row"><label for="mapSeed">Seed</label>
+   <input id="mapSeed" type="number" min="0" max="4294967295" step="1" inputmode="numeric" placeholder="Aléatoire"/>
+   <button type="button" id="randomSeed" aria-label="Nouvelle graine aléatoire">🎲</button>
+  </div>
+  <div id="difficultyInfo" class="advanced-note">Difficulté normale · Des IA variées.</div>
+ </div>
+</details>
+<div id="modeInfo" class="menu-compact-info">50 joueurs · 10 min · Carte moyenne</div>
 <button type="button" id="generateWorld" class="menu-primary">Lancer la conquête →</button>
 
 
 </div>
-<div class="menu-footnote" id="menuStatus">Jeu solo contre des IA · Parties rapides sans sauvegarde</div>
+<div class="menu-footnote" id="menuStatus"></div>
 </div></section>
 <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="modal"><div class="symbol" id="resultSymbol">🏆</div><h2 id="resultTitle">Partie terminée</h2><p id="resultText"></p><button class="primary" id="playAgain">Nouvelle partie</button></div></div>
 <script>
@@ -2334,7 +2350,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       hard:'Expert · Expansion agressive, chasse aux royaumes vulnérables et pression constante.'};
     $('aiDifficulty').disabled=n===1;
     $('difficultyInfo').textContent=n===1?'Mode solo · Aucun adversaire IA.':notes[$('aiDifficulty').value]||notes.normal;
-    $('playerCountInfo').textContent=n+' slot'+(n>1?'s':'')+' au total : vous + '+(n-1)+' IA';
+    $('playerCountInfo').textContent='Vous + '+(n-1)+' IA · '+n+' joueur'+(n>1?'s':'');
     $('modeInfo').textContent=n+' joueur'+(n>1?'s':'')+' · '+minutes+' min · '+
       (world==='small'?'Petite carte':world==='50'?'Carte moyenne':world==='200'?'Grande carte':'Carte géante XL');
   }
