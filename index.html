@@ -263,6 +263,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let worldSeed=0,worldKind='50',terrainFreq=[],terrainPhase=[],terrainAmp=[];
   let centerX=.5,centerY=.5,axisX=.37,axisY=.37,rotation=0;
   let geography='coast',bays=[],lakes=[],coastWarp=[0,0,0,0],mainlandCells=0;
+  let autoSeed=true;
   let terrainRelief=new Uint8Array(TOTAL),shoreDepth=new Uint8Array(TOTAL);
   const MAP_THEMES=['coast','fjord','peninsula','lakes','lagoon','archipelago','halo','fracture','snow'];
   const MAP_NAMES={coast:'Côtes sauvages',fjord:'Fjords et golfes',peninsula:'Péninsules',
@@ -461,6 +462,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const enteredSeed=String($('mapSeed').value).trim();
     worldSeed=enteredSeed!==''?Math.max(0,Math.min(4294967295,Number(enteredSeed)||0))>>>0:
       (Math.random()*4294967296)>>>0;
+    if($('mapSeed').value==='')autoSeed=true;
     $('mapSeed').value=String(worldSeed);
     const random=seededRandom(worldSeed);
     terrainFreq=[2,3,5,7,11,17];
@@ -524,6 +526,14 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(geography==='archipelago')limit+=.09*Math.cos(angle*4+coastWarp[3]);
     if(geography==='fracture')limit+=.21*Math.sin(angle*3+coastWarp[2]);
     if(Math.hypot(wx,wy)>limit)return false;
+    // Véritables bras de mer traversants : ils découpent le continent en
+    // régions séparées, au lieu de simples creux sur une île ronde.
+    if(geography==='fracture'||geography==='archipelago'){
+      const gap=geography==='fracture'?.048:.042;
+      const f1=.76*px+.60*py+.11*Math.sin(py*5+coastWarp[0]);
+      const f2=.61*px-.79*py+.11*Math.cos(px*6+coastWarp[1]);
+      if(Math.abs(f1)<gap||Math.abs(f2-.33)<gap)return false;
+    }
     for(const lake of lakes){
       const lx=(x+.5)/COLS-lake.x,ly=(y+.5)/ROWS-lake.y;
       const cc=Math.cos(lake.rot),ss=Math.sin(lake.rot);
@@ -997,9 +1007,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function chooseSpawns(){
     const candidates=[],step=ACTIVE_REALMS<=10?8:ACTIVE_REALMS<=50?14:18,margin=ACTIVE_REALMS<=10?10:ACTIVE_REALMS<=50?12:10;
     for(let y=margin;y<ROWS-margin;y+=step)for(let x=margin;x<COLS-margin;x+=step){
-      if(tiles[index(x,y)]!==NEUTRAL||regions[index(x,y)]!==0)continue;
-      if(regions[index(x-margin,y)]!==0||regions[index(x+margin,y)]!==0||
-         regions[index(x,y-margin)]!==0||regions[index(x,y+margin)]!==0)continue;
+      const region=regions[index(x,y)];
+      if(tiles[index(x,y)]!==NEUTRAL||region<0)continue;
+      if(regions[index(x-margin,y)]!==region||regions[index(x+margin,y)]!==region||
+         regions[index(x,y-margin)]!==region||regions[index(x,y+margin)]!==region)continue;
       candidates.push([x,y]);
     }
     if(candidates.length<ACTIVE_REALMS)throw new Error('Pas assez de terres');
@@ -1037,7 +1048,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       for(let y=Math.max(0,Math.floor(cy-rx));y<Math.min(ROWS,Math.ceil(cy+rx));y++)
         for(let x=Math.max(0,Math.floor(cx-rx));x<Math.min(COLS,Math.ceil(cx+rx));x++){
           if(((x+.5-cx)/rx)**2+((y+.5-cy)/rx)**2>1)continue;
-          const i=index(x,y);if(tiles[i]!==NEUTRAL)continue;
+          const i=index(x,y);if(tiles[i]!==NEUTRAL||regions[i]!==regions[capital])continue;
           tiles[i]=owner;territoryCounts[owner]++;sumsX[owner]+=x+.5;sumsY[owner]+=y+.5;
           setPixel(i,owner);
         }
@@ -1961,9 +1972,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   $('mapMode').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;});
   $('randomSeed').addEventListener('click',()=>{
     $('mapSeed').value=String((Math.random()*4294967296)>>>0);
-    $('mapPreviewBox').hidden=true;
+    autoSeed=true;$('mapPreviewBox').hidden=true;
   });
-  $('mapSeed').addEventListener('input',()=>{$('mapPreviewBox').hidden=true;});
+  $('mapSeed').addEventListener('input',()=>{autoSeed=false;$('mapPreviewBox').hidden=true;});
   $('previewMap').addEventListener('click',previewWorld);
   $('aiDifficulty').addEventListener('change',updateMenuOptions);
   window.addEventListener('resize',()=>{if(!$('gameApp').hidden)resize();});
@@ -2003,6 +2014,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     $('result').classList.add('hidden');
     $('gameApp').hidden=true;$('mainMenu').hidden=false;
     setCombatOpen(false);updateMenuOptions();
+    if(autoSeed){$('mapSeed').value='';$('mapPreviewBox').hidden=true;}
   }
 
 
@@ -2025,7 +2037,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({mapSeed:worldSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({mapSeed:worldSeed,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
