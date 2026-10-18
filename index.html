@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.1</title>
+  <title>Border Blitz — Prototype V3.2</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -181,7 +181,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.1 • ARCHIPELS ALÉATOIRES</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.2 • TERRES ET LACS</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -218,6 +218,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
  <div class="menu-label">TYPE DE CARTE</div>
  <select id="mapPreset" aria-label="Choisir le style de carte">
  <option value="random" selected>🎲 Aléatoire — tous les styles</option>
+ <option value="plains">🌿 Terres totales — sans eau</option>
+ <option value="greatlake">🌊 Grande plaine — lac central</option>
+ <option value="lakefield">💧 Plaine — lacs dispersés</option>
+ <option value="coastalplain">🏝️ Continent côtier — majorité terre</option>
  <option value="coast">Côtes sauvages</option>
  <option value="fjord">Fjords et golfes</option>
  <option value="peninsula">Péninsules</option>
@@ -265,9 +269,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let geography='coast',bays=[],lakes=[],coastWarp=[0,0,0,0],mainlandCells=0;
   let autoSeed=true;
   let terrainRelief=new Uint8Array(TOTAL),shoreDepth=new Uint8Array(TOTAL);
-  let landLobes=[],landAreas=[],islandLayout='';
-  const MAP_THEMES=['coast','fjord','peninsula','lakes','lagoon','archipelago','halo','fracture','snow'];
-  const MAP_NAMES={coast:'Côtes sauvages',fjord:'Fjords et golfes',peninsula:'Péninsules',
+  let landLobes=[],landAreas=[],islandLayout='',coastSide=0;
+  const MAP_THEMES=['plains','greatlake','lakefield','coastalplain','coast','fjord','peninsula','lakes','lagoon','archipelago','halo','fracture','snow'];
+  const MAP_NAMES={plains:'Terres totales',greatlake:'Grande plaine et lac',lakefield:'Plaine aux lacs',coastalplain:'Continent côtier',coast:'Côtes sauvages',fjord:'Fjords et golfes',peninsula:'Péninsules',
     lakes:'Plaine des lacs',lagoon:'Mers intérieures',archipelago:'Royaume des îles',
     halo:'Halo — mer intérieure',fracture:'Terres fragmentées',snow:'Montagnes enneigées'};
   let islands=[],regions=new Int16Array(TOTAL),coast=new Uint8Array(TOTAL);
@@ -475,7 +479,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     centerX=.5+(random()-.5)*.05;centerY=.5+(random()-.5)*.05;
     axisX=(wide?.464:.38)+(random()-.5)*(wide?.04:.12);
     axisY=(wide?.457:.374)+(random()-.5)*(wide?.04:.11);
-    rotation=(random()-.5)*1.6;
+    rotation=(random()-.5)*1.6;coastSide=Math.floor(random()*4);
     landLobes=[];islandLayout='';
     if(geography==='archipelago'){
       const R=seededRandom((worldSeed^0xA74D39B1)>>>0);
@@ -564,6 +568,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
         lakes.push({x:px,y:py,rx,ry,rot:random()*3.14,phase:random()*6.283});
       }
     }
+    if(geography==='greatlake'||geography==='lakefield'){
+      const desired=geography==='greatlake'?1:2+Math.floor(random()*6);
+      for(let tries=0;tries<desired*30&&lakes.length<desired;tries++){
+        const px=geography==='greatlake'?.40+random()*.20:.13+random()*.74;
+        const py=geography==='greatlake'?.38+random()*.24:.13+random()*.74;
+        const rx=geography==='greatlake'?.14+random()*.105:.044+random()*.061;
+        const ry=geography==='greatlake'?.135+random()*.095:.040+random()*.063;
+        if(lakes.some(k=>Math.hypot((k.x-px)/(.6*rx+k.rx),(k.y-py)/(.6*ry+k.ry))<1.2))continue;
+        lakes.push({x:px,y:py,rx,ry,rot:random()*3.14,phase:random()*6.283});
+      }
+    }
     $('gameFooter').textContent='Carte : '+MAP_NAMES[geography]+' · seed '+worldSeed+' · '+ACTIVE_REALMS+' royaumes · '+(GAME_LENGTH/60)+' min';
     $('boardTitle').textContent=ACTIVE_REALMS+' JOUEUR'+(ACTIVE_REALMS>1?'S':'')+' · #'+String(worldSeed%10000).padStart(4,'0');
     $('enemyLegend').textContent='🌈 '+(ACTIVE_REALMS-1)+' adversaire'+(ACTIVE_REALMS!==2?'s':'');
@@ -574,6 +589,26 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   // à un seul continent : pas de serveur, pas de génération aléatoire en cours de partie.
   function isLand(x,y){
     const X=(x+.5)/COLS,Y=(y+.5)/ROWS;
+    if(geography==='plains')return true;
+    if(geography==='coastalplain'){
+      const edge=coastSide===0?X:coastSide===1?1-X:coastSide===2?Y:1-Y;
+      const along=coastSide<2?Y:X;
+      const coastLine=.118+.052*Math.sin(along*6.283+coastWarp[0])+
+        .049*Math.sin(along*13.5+coastWarp[1])+.026*Math.cos(along*28+coastWarp[2]);
+      return edge>Math.max(.025,Math.min(.28,coastLine));
+    }
+    if(geography==='greatlake'||geography==='lakefield'){
+      for(const lake of lakes){
+        const dx=X-lake.x,dy=Y-lake.y;
+        if(Math.abs(dx)>lake.rx*1.45||Math.abs(dy)>lake.ry*1.45)continue;
+        const c=Math.cos(lake.rot),s=Math.sin(lake.rot);
+        const u=(dx*c-dy*s)/lake.rx,v=(dx*s+dy*c)/lake.ry;
+        const angle=Math.atan2(v,u);
+        const shoreline=1+.16*Math.sin(3*angle+lake.phase)+.09*Math.cos(7*angle+lake.phase*1.5);
+        if(u*u+v*v<shoreline*shoreline)return false;
+      }
+      return true;
+    }
     if(geography==='archipelago'){
       for(const l of landLobes){
         const dx=X-l.x,dy=Y-l.y;
@@ -624,7 +659,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const rng=seededRandom((worldSeed^0x59dd421f)>>>0);
     // Îlots côtiers, groupes d'îles et parfois îles lacustres.
     // Ces formes asymétriques ont leur propre rotation, ainsi que deux octaves de découpes.
-    const goal=geography==='archipelago'?ACTIVE_REALMS>=200?8:ACTIVE_REALMS>=50?5:3:
+    const goal=['plains','greatlake','lakefield','coastalplain'].includes(geography)?0:geography==='archipelago'?ACTIVE_REALMS>=200?8:ACTIVE_REALMS>=50?5:3:
       geography==='fracture'?ACTIVE_REALMS>=200?11:7:
       geography==='halo'?ACTIVE_REALMS>=200?8:5:
       geography==='lakes'?ACTIVE_REALMS>=200?5:3:
@@ -783,7 +818,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       dest[j+2]=Math.min(255,b);dest[j+3]=255;
     }
     context.putImageData(img,0,0);
-    $('previewCaption').textContent=MAP_NAMES[geography]+' · seed '+worldSeed+
+    $('previewCaption').textContent=MAP_NAMES[geography]+' · seed '+worldSeed+' · '+Math.round(totalLand/TOTAL*100)+' % de terres' +
       ' · '+islands.length+' îlot'+(islands.length>1?'s':'');
     $('mapPreviewBox').hidden=false;
   }
@@ -2120,7 +2155,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
