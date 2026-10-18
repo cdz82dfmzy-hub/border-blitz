@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.5</title>
+  <title>Border Blitz — Prototype V3.6</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -154,15 +154,16 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
  border:1px solid #5282a2;border-radius:17px;box-shadow:0 18px 35px #0008}
 .menu-card h1{font-size:22px;margin:0}.menu-card p{font-size:12px;color:#b9d7e9;margin:0;line-height:1.4}
 .menu-label{font-size:10px;letter-spacing:.12em;color:#bbd9ec;font-weight:900}
-.mode-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.mode-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .mode-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:69px;
  border:1px solid #4b7694;border-radius:11px;background:#1e3d56;color:#d8eeff}
-.mode-card strong{font-size:24px;font-weight:900}.mode-card span{font-size:10px;font-weight:750}
+.mode-card strong{font-size:21px;font-weight:900}.mode-card span{font-size:10px;font-weight:750}
 .mode-card.selected{background:#216897;border-color:#b1e9ff;box-shadow:inset 0 0 0 1px #6bc9ff;color:white}
 .menu-native-select{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
 .menu-setting{display:flex;align-items:center;justify-content:space-between;gap:9px;
  border-bottom:1px solid #33566f;min-height:40px;font-size:12px;font-weight:750}
 .menu-setting[hidden]{display:none}
+.menu-setting input{width:92px;min-width:66px;padding:9px 8px;background:#25445c;color:white;border:1px solid #628ba7;border-radius:8px;font-size:15px;font-weight:900;text-align:center}
 .menu-setting select{min-width:85px;max-width:57%;padding:9px 5px;background:#25445c;color:white;
  border:1px solid #628ba7;border-radius:8px;font-size:11px}
 .difficulty-info{font-size:10px;line-height:1.4;padding:5px 7px;color:#acd3e8;background:#142b41;border:1px solid #305773;border-radius:7px}
@@ -203,7 +204,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.5 • FRONTIÈRES ET LITTORAUX</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.6 • JUSQU’À 500 JOUEURS</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><button type="button" id="combatToggle" class="combat-toggle" aria-controls="combatPanel" aria-expanded="false" aria-label="Ouvrir les commandes de combat">⚔ 50 %</button><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -230,12 +231,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 <h1>Nouvelle partie</h1><p>Prépare ta conquête : choisis ta carte et règle la bataille.</p>
 <div class="menu-label">TAILLE DU MONDE</div>
 <div class="mode-cards" id="modeCards">
-<button type="button" data-mode="small" class="mode-card"><strong>1–10</strong><span>Royaumes</span></button>
-<button type="button" data-mode="50" class="mode-card selected"><strong>50</strong><span>Royaumes</span></button>
-<button type="button" data-mode="200" class="mode-card"><strong>200</strong><span>Royaumes</span></button>
+<button type="button" data-slots="10" class="mode-card"><strong>10</strong><span>Joueurs</span></button>
+<button type="button" data-slots="50" class="mode-card selected"><strong>50</strong><span>Joueurs</span></button>
+<button type="button" data-slots="200" class="mode-card"><strong>200</strong><span>Joueurs</span></button>
+<button type="button" data-slots="500" class="mode-card"><strong>500</strong><span>Joueurs</span></button>
 </div>
-<select id="mapMode" class="menu-native-select" aria-label="Mode de carte"><option value="small">1 à 10 joueurs</option><option value="50" selected>50 joueurs</option><option value="200">200 joueurs</option></select>
-<div class="menu-setting" id="smallOptions" hidden><label for="smallCount">Nombre de joueurs</label><select id="smallCount"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option></select></div>
+<div class="menu-setting"><label for="playerCount">Nombre de joueurs (vous inclus)</label><input id="playerCount" type="number" min="1" max="500" step="1" value="50" inputmode="numeric" aria-label="Nombre total de joueurs de 1 à 500" /></div>
+<div id="playerCountInfo" class="difficulty-info">50 joueurs = vous + 49 IA</div>
 <div class="menu-map">
  <div class="menu-label">TYPE DE CARTE</div>
  <select id="mapPreset" aria-label="Choisir le style de carte">
@@ -285,7 +287,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   // AREA est multiplié par la surface pour conserver le même coût et la
   // même production par unité de superficie affichée.
   const RES_SCALE=1.5,DETAIL=6,AREA=DETAIL*DETAIL;
-  let COLS=608,ROWS=528,TOTAL=COLS*ROWS,ACTIVE_REALMS=50;
+  let COLS=912,ROWS=792,TOTAL=COLS*ROWS,ACTIVE_REALMS=50;
   const SPAWN_SLOTS=[];let ACTIVE_SLOTS=[];
   let GAME_LENGTH=600,WAVE_MS=80;
   const MAX_ARMY=6500,FRAGMENT_LIMIT=40;
@@ -366,7 +368,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let aiStyle=new Uint8Array(ACTIVE_REALMS);
   let aiLastEnemy=new Int16Array(ACTIVE_REALMS);
   let aiLastAttack=new Float64Array(ACTIVE_REALMS);
-  let aiSeconds=0,lastAttackOnPlayer=-100;
+  let aiSeconds=0,lastAttackOnPlayer=-100,aiCursor=1;
   const layer=document.createElement('canvas');layer.width=COLS;layer.height=ROWS;
   const layerCtx=layer.getContext('2d');
   let pixels=layerCtx.createImageData(COLS,ROWS);
@@ -486,12 +488,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     return ()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296;};
   }
   function configureWorld(){
-    worldKind=$('mapMode').value;
+    // Slots totaux : le joueur occupe le premier, les autres sont des IA.
+    // La taille de carte est adaptée automatiquement, sans limite artificielle
+    // due aux anciens boutons 10 / 50 / 200.
+    ACTIVE_REALMS=Math.max(1,Math.min(500,Math.round(Number($('playerCount').value)||50)));
+    $('playerCount').value=String(ACTIVE_REALMS);
+    worldKind=ACTIVE_REALMS<=10?'small':ACTIVE_REALMS<=50?'50':ACTIVE_REALMS<=200?'200':'500';
     aiDifficulty=AI_LEVELS[$('aiDifficulty').value]?$('aiDifficulty').value:'normal';
-    ACTIVE_REALMS=worldKind==='small'?Math.max(1,Math.min(10,parseInt($('smallCount').value,10)||10)):worldKind==='200'?200:50;
     if(worldKind==='small'){COLS=384;ROWS=336;GAME_LENGTH=300;WAVE_MS=75;}
+    else if(worldKind==='50'){COLS=912;ROWS=792;GAME_LENGTH=600;WAVE_MS=80;}
     else if(worldKind==='200'){COLS=1344;ROWS=1152;GAME_LENGTH=900;WAVE_MS=140;}
-    else{COLS=912;ROWS=792;GAME_LENGTH=600;WAVE_MS=80;}
+    else{COLS=1728;ROWS=1488;GAME_LENGTH=1200;WAVE_MS=165;}
     gameMinutes=$('matchDuration').value==='auto'?GAME_LENGTH/60:Number($('matchDuration').value)||GAME_LENGTH/60;
     GAME_LENGTH=gameMinutes*60;TOTAL=COLS*ROWS;
     rgb=['#35a4f1'];armyName=['Vous'];
@@ -1265,13 +1272,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function chooseSpawns(){
     // Les espacements correspondent aux distances de la V3.3,
     // exprimées dans la nouvelle grille haute définition.
-    const candidates=[],step=ACTIVE_REALMS<=10?12:ACTIVE_REALMS<=50?21:27;
-    const margin=ACTIVE_REALMS<=10?15:ACTIVE_REALMS<=50?18:15;
+    // Échantillonnage plus dense pour les grandes batailles ; les capitales
+    // gardent une zone initiale indépendante sur les archipels et continents.
+    const candidates=[],step=ACTIVE_REALMS<=10?12:ACTIVE_REALMS<=50?21:
+      ACTIVE_REALMS<=200?27:ACTIVE_REALMS<=350?14:11;
+    const margin=ACTIVE_REALMS<=10?15:ACTIVE_REALMS<=50?18:
+      ACTIVE_REALMS<=200?15:ACTIVE_REALMS<=350?11:9;
     const distributed=geography==='archipelago'||geography==='fracture';
     for(let y=margin;y<ROWS-margin;y+=step)for(let x=margin;x<COLS-margin;x+=step){
       const tile=index(x,y),r=regions[tile];
       if(tiles[tile]!==NEUTRAL||r<0)continue;
-      if(r>0&&(!distributed||landAreas[r].cells<1000))continue;
+      if(r>0&&(!distributed||landAreas[r].cells<(ACTIVE_REALMS>200?220:1000)))continue;
       if(regions[index(x-margin,y)]!==r||regions[index(x+margin,y)]!==r||
          regions[index(x,y-margin)]!==r||regions[index(x,y+margin)]!==r)continue;
       candidates.push([x,y]);
@@ -1291,8 +1302,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       // Le placement le plus éloigné possible reste prioritaire.
       // Sur un archipel dense, on accepte un espacement moindre plutôt
       // que d'échouer à générer le nombre de royaumes demandé.
-      const min=distributed?(ACTIVE_REALMS<=10?27:ACTIVE_REALMS<=50?19.5:13.5):
-        ACTIVE_REALMS<=10?37.5:ACTIVE_REALMS<=50?28.5:18;
+      const min=distributed?(ACTIVE_REALMS<=10?27:ACTIVE_REALMS<=50?19.5:
+        ACTIVE_REALMS<=200?13.5:ACTIVE_REALMS<=350?19:15):
+        ACTIVE_REALMS<=10?37.5:ACTIVE_REALMS<=50?28.5:
+        ACTIVE_REALMS<=200?18:ACTIVE_REALMS<=350?20:16;
       if(pick<0||largest<min*min)throw Error('Capitales trop rapprochées');
       const chosen=candidates[pick];selected.push(chosen);
       for(let i=0;i<candidates.length;i++)if(dist[i]>=0){
@@ -1307,7 +1320,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function startArmyPositions(){
     generateTerrain();chooseSpawns();
     territoryCounts.fill(0);sumsX.fill(0);sumsY.fill(0);capitals.fill(-1);
-    const rx=ACTIVE_REALMS>=200?12:ACTIVE_REALMS<=10?13.5:15;
+    const rx=ACTIVE_REALMS>350?6.5:ACTIVE_REALMS>200?8:
+      ACTIVE_REALMS>=200?12:ACTIVE_REALMS<=10?13.5:15;
     for(let owner=0;owner<ACTIVE_REALMS;owner++){
       const [px,py]=SPAWN_SLOTS[owner],cx=px*COLS,cy=py*ROWS,capital=index(Math.floor(cx),Math.floor(cy));
       if(tiles[capital]!==NEUTRAL)throw new Error('Capitale sur mer ou déjà prise : '+owner);
@@ -2007,13 +2021,14 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(waveCount%(ACTIVE_REALMS>=200?140:60)===0&&capturesSinceCleanup>(ACTIVE_REALMS>=200?300:180)){cleanupFragments();capturesSinceCleanup=0;}
     if(waveCount%8===0)finishLastPockets();
     followPlayer();
-    if(waveCount%2===0)renderScore();draw();
+    if(waveCount%2===0)renderScore();
+    if(ACTIVE_REALMS<=200||waveCount%2===0)draw();
   }
 
   // Chaque IA joue à son propre rythme. Même 50 IA ne prennent pas
   // leurs décisions toutes au même instant, et chacune a son tempérament.
   function resetAI(){
-    aiSeconds=0;lastAttackOnPlayer=-100;
+    aiSeconds=0;lastAttackOnPlayer=-100;aiCursor=1;
     aiStats={decisions:0,expansions:0,wars:0,playerAttacks:0,scoutedWars:0};
     const p=AI_LEVELS[aiDifficulty];
     for(let i=1;i<ACTIVE_REALMS;i++){
@@ -2026,17 +2041,23 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function aiScheduler(){
     if(!running)return;
     aiSeconds++;
-    // Deux calculs complets de route navale par seconde de jeu, quel que
-    // soit le nombre de royaumes. La navigation AI est échelonnée.
     aiSeaPathBudget=ACTIVE_REALMS>=200?2:3;
     const p=AI_LEVELS[aiDifficulty];
-    for(let i=1;i<ACTIVE_REALMS;i++){
+    // Temps de décision maîtrisé sur iPhone : jusqu'à 100 IA réévaluées
+    // à chaque seconde, avec rotation équitable entre les 499 adversaires.
+    const maxActions=ACTIVE_REALMS>350?100:ACTIVE_REALMS>200?110:ACTIVE_REALMS;
+    let examined=0,actions=0;
+    const start=aiCursor;
+    const botsCount=ACTIVE_REALMS-1;
+    for(;examined<botsCount&&actions<maxActions;examined++){
+      const i=1+(start-1+examined)%botsCount;
       if(aiSeconds<aiNextDecision[i])continue;
-      aiStats.decisions++;
+      actions++;aiStats.decisions++;
       const acted=bot(i);
       aiNextDecision[i]=aiSeconds+(acted?p.actedPause:p.idlePause)+
         (1-aiAggression[i])*p.delay+Math.random()*p.jitter;
     }
+    if(botsCount)aiCursor=1+(start-1+examined)%botsCount;
     if(aiSeconds%3===0)renderScore();
   }
   function ongoingAttacksOnPlayer(){
@@ -2289,13 +2310,15 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 
   $('playAgain').addEventListener('click',showMainMenu);
   $('modeCards').addEventListener('click',e=>{
-    const button=e.target.closest('button[data-mode]');if(!button)return;
-    $('mapMode').value=button.getAttribute('data-mode');updateMenuOptions();
+    const button=e.target.closest('button[data-slots]');if(!button)return;
+    $('playerCount').value=button.getAttribute('data-slots');
+    $('mapPreviewBox').hidden=true;updateMenuOptions();
   });
-  $('smallCount').addEventListener('change',updateMenuOptions);
+  $('playerCount').addEventListener('input',()=>{$('mapPreviewBox').hidden=true;updateMenuOptions();});
+  $('playerCount').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;updateMenuOptions(true);});
   $('matchDuration').addEventListener('change',updateMenuOptions);
   $('mapPreset').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;});
-  $('mapMode').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;});
+ 
   $('randomSeed').addEventListener('click',()=>{
     $('mapSeed').value=String((Math.random()*4294967296)>>>0);
     autoSeed=true;$('mapPreviewBox').hidden=true;
@@ -2315,25 +2338,25 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     stopLoops();paused=false;
     timer=setInterval(tick,1000);wavesTimer=setInterval(tickWaves,WAVE_MS);botTimer=setInterval(aiScheduler,1000);
   }
-  function updateMenuOptions(){
-    const mode=$('mapMode').value;$('smallOptions').hidden=mode!=='small';
-    for(const b of $('modeCards').querySelectorAll('button[data-mode]'))
-      b.classList.toggle('selected',b.getAttribute('data-mode')===mode);
-    const n=mode==='small'?Number($('smallCount').value):Number(mode),auto=mode==='small'?5:mode==='50'?10:15;
+  function updateMenuOptions(commit=false){
+    let n=Number($('playerCount').value);
+    if(!Number.isFinite(n))n=50;
+    if(commit){n=Math.max(1,Math.min(500,Math.round(n)));$('playerCount').value=String(n);}
+    else n=Math.max(1,Math.min(500,Math.round(n)));
+    const world=n<=10?'small':n<=50?'50':n<=200?'200':'500';
+    for(const b of $('modeCards').querySelectorAll('button[data-slots]'))
+      b.classList.toggle('selected',Number(b.getAttribute('data-slots'))===n);
+    const auto=world==='small'?5:world==='50'?10:world==='200'?15:20;
     const minutes=$('matchDuration').value==='auto'?auto:Number($('matchDuration').value);
     const notes={easy:'Déjà exigeant · Équivalent de l’ancien Difficile.',
       normal:'Plus intense · Cibles plus intelligentes et offensives rapprochées.',
       hard:'Expert · Expansion agressive, chasse aux royaumes vulnérables et pression constante.'};
     $('aiDifficulty').disabled=n===1;
     $('difficultyInfo').textContent=n===1?'Mode solo · Aucun adversaire IA.':notes[$('aiDifficulty').value]||notes.normal;
-    $('modeInfo').textContent=n+' royaume'+(n>1?'s':'')+' · '+minutes+' min · '+
-      (mode==='small'?'Petite carte':mode==='50'?'Grande carte':'Carte géante');
+    $('playerCountInfo').textContent=n+' slot'+(n>1?'s':'')+' au total : vous + '+(n-1)+' IA';
+    $('modeInfo').textContent=n+' joueur'+(n>1?'s':'')+' · '+minutes+' min · '+
+      (world==='small'?'Petite carte':world==='50'?'Carte moyenne':world==='200'?'Grande carte':'Carte géante XL');
   }
-
-
-
-
-
 
   function showMainMenu(){
     stopLoops();paused=true;running=false;
@@ -2363,10 +2386,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       detailedFillStyle,frontSpeed,availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
-  $('smallOptions').hidden=$('mapMode').value!=='small';
+  updateMenuOptions(true);
   // Supprimer une ancienne sauvegarde V2.3 : aucune partie ne persiste désormais.
   try{window.localStorage?.removeItem('border_blitz_save_v1');}catch(e){}
   updateMenuOptions();showMainMenu();
