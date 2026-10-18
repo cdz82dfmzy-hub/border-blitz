@@ -307,7 +307,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
   let ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
   let shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};
-  let seaZone=new Int16Array(TOTAL),seaNav=null,seaNavFine=null,lastShipDraw=0;
+  let seaZone=new Int16Array(TOTAL),seaNav=null,seaNavFine=null,lastShipDraw=0,aiSeaPathBudget=0;
   const WATER=-2, NEUTRAL=-1;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
@@ -904,13 +904,31 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       const indexCell=index(px,py);
       if(tiles[indexCell]===WATER)water[y*cols+x]=indexCell;
     }
-    seaNav={step,cols,rows,water};seaNavFine=null;
+    seaNav={step,cols,rows,water};buildSeaEdges(seaNav);seaNavFine=null;
     for(const island of landAreas){
       const zones=new Set();
       for(const beach of island.beaches)
         for(const wet of shoreWater(beach))zones.add(seaZone[wet]);
       island.waterZones=[...zones].filter(z=>z>=0);
     }
+  }
+  function buildSeaEdges(nav){
+    // Les passages entre cases de la grille maritime sont établis UNE fois
+    // au chargement de la carte ; l'A* ne teste plus les mêmes lignes d'eau
+    // des millions de fois pendant les offensives des 200 royaumes.
+    const {cols,rows,water}=nav,edges=new Uint8Array(water.length);
+    const directions=[[1,0,1,0],[0,1,3,2],[1,1,7,4],[-1,1,5,6]];
+    for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+      const i=y*cols+x,p=water[i];if(p<0)continue;
+      for(const [dx,dy,bit,reverse] of directions){
+        const nx=x+dx,ny=y+dy;
+        if(nx<0||nx>=cols||ny<0||ny>=rows)continue;
+        const neighbor=ny*cols+nx,q=water[neighbor];
+        if(q<0||seaZone[p]!==seaZone[q]||!waterLine(p,q))continue;
+        edges[i]|=1<<bit;edges[neighbor]|=1<<reverse;
+      }
+    }
+    nav.edges=edges;
   }
   function getFineSeaNavigation(){
     if(seaNavFine)return seaNavFine;
@@ -921,7 +939,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       const px=Math.min(COLS-1,x*step+1),py=Math.min(ROWS-1,y*step+1);
       const i=index(px,py);if(tiles[i]===WATER)water[y*cols+x]=i;
     }
-    seaNavFine={step,cols,rows,water};return seaNavFine;
+    seaNavFine={step,cols,rows,water};buildSeaEdges(seaNavFine);return seaNavFine;
   }
   function shoreWater(tile){
     const x=tile%COLS,y=tile/COLS|0,out=[];
@@ -993,12 +1011,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       const cur=pop().id;if(done[cur])continue;done[cur]=1;
       if(goalCost[cur]<Infinity){finish=cur;break;}
       const cx=cur%nav.cols,cy=cur/nav.cols|0;
-      for(const [ox,oy] of vectors){
+      for(let direction=0;direction<8;direction++){
+        if(!(nav.edges[cur]&(1<<direction)))continue;
+        const [ox,oy]=vectors[direction];
         const nx=cx+ox,ny=cy+oy;
         if(nx<0||ny<0||nx>=nav.cols||ny>=nav.rows)continue;
         const next=ny*nav.cols+nx;
         if(done[next]||nav.water[next]<0||seaZone[nav.water[next]]!==seaZone[start])continue;
-        if(!waterLine(nav.water[cur],nav.water[next]))continue;
         const nextCost=dist[cur]+d(nav.water[cur],nav.water[next]);
         if(nextCost<dist[next]){
           dist[next]=nextCost;prev[next]=cur;push(next,nextCost+heuristic(next));
@@ -1286,7 +1305,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(!candidates.length)return false;
     const chosen=[];
     for(const c of candidates){
-      if(chosen.length>=8)break;
+      if(chosen.length>=(owner===0?8:2))break;
       if(chosen.every(v=>squared(c.tile,v)>Math.max(36,Math.round(island.cells/8))))chosen.push(c.tile);
     }
     if(!chosen.length)chosen.push(candidates[0].tile);
@@ -1304,12 +1323,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
           }
         }
         if(startSea<0)continue;
+        if(owner>0){
+          if(aiSeaPathBudget<=0)return false;
+          aiSeaPathBudget--;
+        }
         const route=seaRoute(startSea,wetEnd,false,owner===0);
         if(!route||route.length>=bestLength)continue;
         bestLength=route.length;
         best={origin:startTile,landing:beach,shipPath:route.points,seaLength:route.length};
+        if(owner>0)break;
       }
-      if(best&&bestLength<30)break;
+      if(best&&(owner>0||bestLength<30))break;
     }
     if(!best){
       shipStats.rejected++;
@@ -1915,6 +1939,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function aiScheduler(){
     if(!running)return;
     aiSeconds++;
+    // Deux calculs complets de route navale par seconde de jeu, quel que
+    // soit le nombre de royaumes. La navigation AI est échelonnée.
+    aiSeaPathBudget=ACTIVE_REALMS>=200?2:3;
     const p=AI_LEVELS[aiDifficulty];
     for(let i=1;i<ACTIVE_REALMS;i++){
       if(aiSeconds<aiNextDecision[i])continue;
@@ -1957,7 +1984,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       return success;
     };
     const shipChance=aiDifficulty==='hard'?.18:aiDifficulty==='normal'?.11:.07;
-    if(landAreas.length>1&&coastOwners[owner].size&&Math.random()<shipChance){
+    if(aiSeaPathBudget>0&&landAreas.length>1&&coastOwners[owner].size&&Math.random()<shipChance){
       const access=availableSeas(owner);
       const first=Math.floor(Math.random()*landAreas.length);
       for(let k=0;k<landAreas.length;k++){
