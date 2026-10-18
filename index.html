@@ -295,6 +295,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let autoSeed=true;
   let terrainRelief=new Uint8Array(TOTAL),shoreDepth=new Uint8Array(TOTAL);
   let landLobes=[],landAreas=[],islandLayout='',coastSide=0;
+  // Table d'angle pré-calculée : les millions de points de côte n'ont plus
+  // besoin de recalculer six sinusoïdes et les décrochements à chaque pixel.
+  const ANGLE_SAMPLES=8192,angleLimits=new Float32Array(ANGLE_SAMPLES+1);
+  let landRotationCos=1,landRotationSin=0;
   const MAP_THEMES=['plains','greatlake','lakefield','coastalplain','coast','fjord','peninsula','lakes','lagoon','archipelago','halo','fracture','snow'];
   const MAP_NAMES={plains:'Terres totales',greatlake:'Grande plaine et lac',lakefield:'Plaine aux lacs',coastalplain:'Continent côtier',coast:'Côtes sauvages',fjord:'Fjords et golfes',peninsula:'Péninsules',
     lakes:'Plaine des lacs',lagoon:'Mers intérieures',archipelago:'Royaume des îles',
@@ -604,6 +608,24 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
         lakes.push({x:px,y:py,rx,ry,rot:random()*3.14,phase:random()*6.283});
       }
     }
+    landRotationCos=Math.cos(rotation);landRotationSin=Math.sin(rotation);
+    for(const lobe of landLobes){lobe.cos=Math.cos(lobe.rot);lobe.sin=Math.sin(lobe.rot);}
+    for(const lake of lakes){lake.cos=Math.cos(lake.rot);lake.sin=Math.sin(lake.rot);}
+    // Valeurs identiques au profil analytique, interpolées entre 8192 directions.
+    for(let k=0;k<=ANGLE_SAMPLES;k++){
+      const angle=-Math.PI+(k/ANGLE_SAMPLES)*Math.PI*2;
+      let limit=1;
+      for(let j=0;j<terrainFreq.length;j++)
+        limit+=terrainAmp[j]*Math.sin(terrainFreq[j]*angle+terrainPhase[j]);
+      for(const bay of bays){
+        let delta=Math.abs(angle-bay.angle);
+        if(delta>Math.PI)delta=2*Math.PI-delta;
+        limit+=bay.sign*bay.depth*Math.exp(-.5*(delta/bay.spread)**2);
+      }
+      if(geography==='peninsula')limit+=.14*Math.sin(angle*2+coastWarp[0]);
+      if(geography==='fracture')limit+=.16*Math.sin(angle*3+coastWarp[2]);
+      angleLimits[k]=limit;
+    }
     $('gameFooter').textContent='Carte : '+MAP_NAMES[geography]+' · seed '+worldSeed+' · '+ACTIVE_REALMS+' royaumes · '+(GAME_LENGTH/60)+' min';
     $('boardTitle').textContent=ACTIVE_REALMS+' JOUEUR'+(ACTIVE_REALMS>1?'S':'')+' · #'+String(worldSeed%10000).padStart(4,'0');
     $('enemyLegend').textContent='🌈 '+(ACTIVE_REALMS-1)+' adversaire'+(ACTIVE_REALMS!==2?'s':'');
@@ -626,7 +648,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       for(const lake of lakes){
         const dx=X-lake.x,dy=Y-lake.y;
         if(Math.abs(dx)>lake.rx*1.45||Math.abs(dy)>lake.ry*1.45)continue;
-        const c=Math.cos(lake.rot),s=Math.sin(lake.rot);
+        const c=lake.cos,s=lake.sin;
         const u=(dx*c-dy*s)/lake.rx,v=(dx*s+dy*c)/lake.ry;
         const angle=Math.atan2(v,u);
         const shoreline=1+.16*Math.sin(3*angle+lake.phase)+.09*Math.cos(7*angle+lake.phase*1.5);
@@ -638,7 +660,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       for(const l of landLobes){
         const dx=X-l.x,dy=Y-l.y;
         if(Math.abs(dx)>l.rx*1.8||Math.abs(dy)>l.ry*1.8)continue;
-        const ca=Math.cos(l.rot),sa=Math.sin(l.rot);
+        const ca=l.cos,sa=l.sin;
         const u=(dx*ca-dy*sa)/l.rx,v=(dx*sa+dy*ca)/l.ry;
         const r=u*u+v*v;
         if(r>2.6)continue;
@@ -648,19 +670,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       }
       return false;
     }
-    const dx=X-centerX,dy=Y-centerY,cr=Math.cos(rotation),sr=Math.sin(rotation);
+    const dx=X-centerX,dy=Y-centerY,cr=landRotationCos,sr=landRotationSin;
     const px=(dx*cr-dy*sr)/axisX,py=(dx*sr+dy*cr)/axisY;
     const wx=px+.055*Math.sin(py*7+coastWarp[0])+.025*Math.sin(py*17+coastWarp[1]);
     const wy=py+.055*Math.sin(px*7+coastWarp[2])+.024*Math.cos(px*19+coastWarp[3]);
-    const angle=Math.atan2(wy,wx);let limit=1;
-    for(let j=0;j<terrainFreq.length;j++)
-      limit+=terrainAmp[j]*Math.sin(terrainFreq[j]*angle+terrainPhase[j]);
-    for(const b of bays){
-      let delta=Math.abs(angle-b.angle);if(delta>Math.PI)delta=2*Math.PI-delta;
-      limit+=b.sign*b.depth*Math.exp(-.5*(delta/b.spread)**2);
-    }
-    if(geography==='peninsula')limit+=.14*Math.sin(angle*2+coastWarp[0]);
-    if(geography==='fracture')limit+=.16*Math.sin(angle*3+coastWarp[2]);
+    const angle=Math.atan2(wy,wx);
+    const at=(angle+Math.PI)*(ANGLE_SAMPLES/(2*Math.PI)),j=Math.min(ANGLE_SAMPLES-1,Math.max(0,Math.floor(at)));
+    const limit=angleLimits[j]+(angleLimits[j+1]-angleLimits[j])*(at-j);
     if(Math.hypot(wx,wy)>limit)return false;
     if(geography==='fracture'){
       const c1=.44+.088*Math.sin(Y*7.5+coastWarp[0])+.034*Math.cos(Y*17+coastWarp[1]);
@@ -668,7 +684,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(Math.abs(X-c1)<.020||Math.abs(X-c2)<.019)return false;
     }
     for(const lake of lakes){
-      const lx=X-lake.x,ly=Y-lake.y,cc=Math.cos(lake.rot),ss=Math.sin(lake.rot);
+      const lx=X-lake.x,ly=Y-lake.y,cc=lake.cos,ss=lake.sin;
       const u=(lx*cc-ly*ss)/lake.rx,v=(lx*ss+ly*cc)/lake.ry;
       const theta=Math.atan2(v,u);
       const shore=1+.17*Math.sin(3*theta+lake.phase)+.09*Math.cos(7*theta+lake.phase*1.5);
