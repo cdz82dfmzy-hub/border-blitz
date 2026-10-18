@@ -1041,7 +1041,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     for(let k=1;k<ACTIVE_REALMS;k++){
       let pick=-1,largest=-1;
       for(let i=0;i<candidates.length;i++)if(dist[i]>largest){largest=dist[i];pick=i;}
-      const min=ACTIVE_REALMS<=10?34:ACTIVE_REALMS<=50?23:15;
+      // Le placement le plus éloigné possible reste prioritaire.
+      // Sur un archipel dense, on accepte un espacement moindre plutôt
+      // que d'échouer à générer le nombre de royaumes demandé.
+      const min=distributed?(ACTIVE_REALMS<=10?18:ACTIVE_REALMS<=50?13:9):
+        ACTIVE_REALMS<=10?25:ACTIVE_REALMS<=50?19:12;
       if(pick<0||largest<min*min)throw Error('Capitales trop rapprochées');
       const chosen=candidates[pick];selected.push(chosen);
       for(let i=0;i<candidates.length;i++)if(dist[i]>=0){
