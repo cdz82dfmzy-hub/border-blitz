@@ -779,7 +779,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       c.initial+=committed;c.budget+=committed;c.wait=0;
       message('<strong>'+playerFrontName(c)+'</strong> : +'+fmtTroops(committed)+' soldats en renfort.');
     }else{
-      c={budget:committed,initial:committed,aimOwner,captured:0,wait:0,cursor:0,neutralSpent:0,enemySpent:0};
+      c={budget:committed,initial:committed,aimOwner,captured:0,wait:0,cursor:0,neutralSpent:0,enemySpent:0,island:island>0?island:undefined};
       playerCampaigns.push(c);
       message('<strong>'+playerFrontName(c)+'</strong> : nouvelle offensive avec '+fmtTroops(committed)+' soldats.');
     }
@@ -1106,7 +1106,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     endCampaign(owner);
     const committed=maximumCommit(owner,pct);if(committed<2)return false;
     armies[owner]-=committed;
-    campaigns[owner]={budget:committed,initial:committed,aimOwner,captured:0,wait:0,cursor:0,neutralSpent:0,enemySpent:0};
+    campaigns[owner]={budget:committed,initial:committed,aimOwner,captured:0,wait:0,cursor:0,neutralSpent:0,enemySpent:0,island:regions[target]>0?regions[target]:undefined};
     return true;
   }
   // Lorsqu'un royaume subit des pertes, ses troupes engagées ailleurs restent vulnérables.
