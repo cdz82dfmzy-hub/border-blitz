@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.7</title>
+  <title>Border Blitz — Prototype V3.7.1</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -326,6 +326,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let flashing=new Map(), touched=null, mapW=370, mapH=330, lastMessage='', waveCount=0, capturesSinceCleanup=0;
   let worldW=370,worldH=370*ROWS/COLS; // mêmes pixels par cellule sur les deux axes
   let totalLand=0, coastPath=new Path2D();
+  // Littoral fixe : le cache évite de retracer le monde entier sur iPhone.
+  let coastSegments=new Float32Array(0),coastRevision=0,cachedCoastRevision=-1;
+  const coastOverlay=document.createElement('canvas');
+  const coastOverlayCtx=coastOverlay.getContext('2d');
+  let coastCacheBuilds=0,coastVisibleSegments=0;
   let terrainReady=false,contourSegments=0;
   const detailedPaintCache=new Map();
   let lastBattleReport=null;
@@ -1116,8 +1121,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   // Calculé une fois par monde, jamais pendant un combat.
   function buildSmoothCoast(){
     const path=new Path2D();let segments=0;
+    const vertices=[];
     function segment(ax,ay,bx,by){
-      path.moveTo(ax,ay);path.lineTo(bx,by);segments++;
+      path.moveTo(ax,ay);path.lineTo(bx,by);
+      vertices.push(ax,ay,bx,by);segments++;
     }
     for(let y=0;y<ROWS-1;y++)for(let x=0;x<COLS-1;x++){
       const i=y*COLS+x;
@@ -1139,7 +1146,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
         if(e.length===2)segment(...e[0],...e[1]);
       }
     }
-    coastPath=path;contourSegments=segments;
+    coastPath=path;coastSegments=new Float32Array(vertices);
+    contourSegments=segments;coastRevision++;cachedCoastRevision=-1;
   }
   // Les détails utilisent les mêmes couleurs que la texture de fond,
   // mais sans agrandir les contours raster à très fort zoom.
@@ -1700,7 +1708,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       followPlayer(true);
       if(!lastCameraFrame)cameraStep(true);
     }
-    updateCameraButtons();draw();
+    updateCameraButtons();prepareCoastCache();draw();
   }
   function renderDetailedCells(dx,dy){
     const cellPx=zoom*dx;
@@ -1740,6 +1748,48 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     ctx.lineWidth=1.55/zoom;ctx.strokeStyle='#b9edff';ctx.stroke(playerBorder);
     return true;
   }
+  function prepareCoastCache(){
+    const width=Math.max(1,Math.round(worldW*2)),height=Math.max(1,Math.round(worldH*2));
+    if(cachedCoastRevision===coastRevision&&coastOverlay.width===width&&coastOverlay.height===height)return;
+    coastOverlay.width=width;coastOverlay.height=height;
+    cachedCoastRevision=coastRevision;coastCacheBuilds++;
+    if(!contourSegments)return;
+    const dx=worldW/COLS,dy=worldH/ROWS;
+    coastOverlayCtx.setTransform(2*dx,0,0,2*dy,0,0);
+    coastOverlayCtx.lineJoin='round';coastOverlayCtx.lineCap='round';
+    coastOverlayCtx.strokeStyle='#0a3342';coastOverlayCtx.lineWidth=2.7/Math.min(dx,dy);
+    coastOverlayCtx.globalAlpha=.54;coastOverlayCtx.stroke(coastPath);
+    coastOverlayCtx.strokeStyle='#dde9bd';coastOverlayCtx.lineWidth=.9/Math.min(dx,dy);
+    coastOverlayCtx.globalAlpha=.88;coastOverlayCtx.stroke(coastPath);
+    coastOverlayCtx.globalAlpha=1;
+  }
+  function drawCoast(dx,dy){
+    if(!contourSegments){coastVisibleSegments=0;return;}
+    if(zoom<=1.45){
+      prepareCoastCache();
+      ctx.drawImage(coastOverlay,0,0,worldW,worldH);
+      coastVisibleSegments=contourSegments;return;
+    }
+    const minX=Math.max(-2,-offsetX/(zoom*dx)-2),minY=Math.max(-2,-offsetY/(zoom*dy)-2);
+    const maxX=Math.min(COLS+2,(mapW-offsetX)/(zoom*dx)+2);
+    const maxY=Math.min(ROWS+2,(mapH-offsetY)/(zoom*dy)+2);
+    const path=new Path2D(),v=coastSegments;let count=0;
+    for(let k=0;k<v.length;k+=4){
+      const ax=v[k],ay=v[k+1],bx=v[k+2],by=v[k+3];
+      if(Math.max(ax,bx)<minX||Math.min(ax,bx)>maxX||
+         Math.max(ay,by)<minY||Math.min(ay,by)>maxY)continue;
+      path.moveTo(ax,ay);path.lineTo(bx,by);count++;
+    }
+    coastVisibleSegments=count;
+    if(!count)return;
+    ctx.save();ctx.scale(dx,dy);
+    ctx.lineJoin='round';ctx.lineCap='round';
+    ctx.strokeStyle='#0a3342';ctx.lineWidth=2.7/(Math.min(dx,dy)*zoom);
+    ctx.globalAlpha=.54;ctx.stroke(path);
+    ctx.strokeStyle='#dde9bd';ctx.lineWidth=.9/(Math.min(dx,dy)*zoom);
+    ctx.globalAlpha=.88;ctx.stroke(path);
+    ctx.globalAlpha=1;ctx.restore();
+  }
   function draw(){
     const dx=worldW/COLS,dy=worldH/ROWS;
     ctx.save();ctx.clearRect(0,0,mapW,mapH);
@@ -1753,13 +1803,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     ctx.imageSmoothingEnabled=zoom*dx<.85;
     ctx.drawImage(layer,0,0,worldW,worldH);
     if(!renderDetailedCells(dx,dy))detailedCellsRendered=0;
-    ctx.save();ctx.scale(dx,dy);
-    ctx.lineJoin='round';ctx.lineCap='round';
-    ctx.strokeStyle='#0a3342';ctx.lineWidth=2.7/(Math.min(dx,dy)*zoom);
-    ctx.globalAlpha=.54;ctx.stroke(coastPath);
-    ctx.strokeStyle='#dde9bd';ctx.lineWidth=.9/(Math.min(dx,dy)*zoom);
-    ctx.globalAlpha=.88;ctx.stroke(coastPath);
-    ctx.globalAlpha=1;ctx.restore();
+    drawCoast(dx,dy);
     const now=performance.now();
     for(const [i,stamp] of flashing){
       const age=now-stamp;if(age>750){flashing.delete(i);continue;}
@@ -2411,7 +2455,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered,coastCacheBuilds,coastVisibleSegments,coastTotalSegments:contourSegments}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       detailedFillStyle,frontSpeed,availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   updateMenuOptions(true);
