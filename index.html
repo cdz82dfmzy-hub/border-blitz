@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.7.1</title>
+  <title>Border Blitz — Prototype V3.8</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -469,10 +469,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       borderDirty.clear();
     }
   }
-  function markOutlineDirty(i,neighbors){
+  function markOutlineDirty(i,x,y){
     if(borderDirtyAll)return;
     borderDirty.add(i);
-    for(const j of neighbors)borderDirty.add(j);
+    if(x>0)borderDirty.add(i-1);
+    if(x<COLS-1)borderDirty.add(i+1);
+    if(y>0)borderDirty.add(i-COLS);
+    if(y<ROWS-1)borderDirty.add(i+COLS);
   }
   const pointers=new Map();
   let pinch=null, preventTapAfterPinch=false;
@@ -1205,19 +1208,28 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function updateFrontAt(i,owner){
     if(owner<0)return;
     if(tiles[i]===owner||tiles[i]===WATER){frontiers[owner].delete(i);return;}
-    for(const n of near(i))if(tiles[n]===owner){frontiers[owner].add(i);return;}
-    frontiers[owner].delete(i);
+    const x=i%COLS,y=i/COLS|0;
+    if((x>0&&tiles[i-1]===owner)||
+       (x<COLS-1&&tiles[i+1]===owner)||
+       (y>0&&tiles[i-COLS]===owner)||
+       (y<ROWS-1&&tiles[i+COLS]===owner))
+      frontiers[owner].add(i);
+    else frontiers[owner].delete(i);
   }
   function changeTile(i,next){
-    const prev=tiles[i];if(prev===WATER||next===WATER||prev===next||next>=ACTIVE_REALMS)return false;
-    const ns=near(i),x=i%COLS,y=i/COLS|0;
+    const prev=tiles[i];
+    if(prev===WATER||next===WATER||prev===next||next>=ACTIVE_REALMS)return false;
+    const x=i%COLS,y=i/COLS|0;
     if(prev>=0){
       territoryCounts[prev]--;sumsX[prev]-=x+.5;sumsY[prev]-=y+.5;
       if(territoryCounts[prev]===0)aliveCount--;
+      ownRegions[prev][regions[i]]--;
+      if(coast[i])coastOwners[prev].delete(i);
     }
-    if(prev>=0){ownRegions[prev][regions[i]]--;if(coast[i])coastOwners[prev].delete(i);}
     tiles[i]=next;
-    if(next>=0){ownRegions[next][regions[i]]++;if(coast[i])coastOwners[next].add(i);
+    if(next>=0){
+      ownRegions[next][regions[i]]++;
+      if(coast[i])coastOwners[next].add(i);
       if(territoryCounts[next]===0)aliveCount++;
       territoryCounts[next]++;sumsX[next]+=x+.5;sumsY[next]+=y+.5;
     }
@@ -1226,16 +1238,28 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(next===0&&!playerBoundsDirty){
       if(!playerBounds)playerBounds={minX:x,maxX:x,minY:y,maxY:y};
       else{
-        if(x<playerBounds.minX)playerBounds.minX=x;if(x>playerBounds.maxX)playerBounds.maxX=x;
-        if(y<playerBounds.minY)playerBounds.minY=y;if(y>playerBounds.maxY)playerBounds.maxY=y;
+        if(x<playerBounds.minX)playerBounds.minX=x;
+        if(x>playerBounds.maxX)playerBounds.maxX=x;
+        if(y<playerBounds.minY)playerBounds.minY=y;
+        if(y>playerBounds.maxY)playerBounds.maxY=y;
       }
     }
-    setPixel(i,next);markOutlineDirty(i,ns);
-    const affected=new Set();
-    if(prev>=0)affected.add(prev);if(next>=0)affected.add(next);
-    for(const j of ns)if(tiles[j]>=0)affected.add(tiles[j]);
-    for(const p of affected)updateFrontAt(i,p);
-    for(const j of ns){if(prev>=0)updateFrontAt(j,prev);if(next>=0)updateFrontAt(j,next);}
+    setPixel(i,next);markOutlineDirty(i,x,y);
+    // Voisins directs sans tableau ni Set temporaire. Une répétition
+    // éventuelle est idempotente et moins coûteuse qu'une allocation.
+    if(prev>=0)updateFrontAt(i,prev);
+    if(next>=0)updateFrontAt(i,next);
+    const touch=(j)=>{
+      if(j<0)return;
+      const other=tiles[j];
+      if(other>=0&&other!==prev&&other!==next)updateFrontAt(i,other);
+      if(prev>=0)updateFrontAt(j,prev);
+      if(next>=0)updateFrontAt(j,next);
+    };
+    if(x>0)touch(i-1);
+    if(x<COLS-1)touch(i+1);
+    if(y>0)touch(i-COLS);
+    if(y<ROWS-1)touch(i+COLS);
     return true;
   }
   function rebuildFrontiers(){
@@ -1960,27 +1984,32 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     return Math.min(7,Math.max(.45,Math.pow(ratio,.76)));
   }
   function selectWave(owner,c){
-    const edge=frontier(owner);if(!edge.length)return [];
-    let eligible;
-    if(c.aimOwner===NEUTRAL)eligible=edge.filter(i=>tiles[i]===NEUTRAL&&(!c.island||regions[i]===c.island));
-    else{
-      eligible=edge.filter(i=>tiles[i]===c.aimOwner&&(!c.island||regions[i]===c.island));
-      if(!eligible.length){
-        eligible=edge.filter(i=>tiles[i]===NEUTRAL&&(!c.island||regions[i]===c.island));
-        if(eligible.length&&count(c.aimOwner)>0){
-          const px=sumsX[c.aimOwner]/count(c.aimOwner),py=sumsY[c.aimOwner]/count(c.aimOwner);
-          eligible.sort((a,b)=>{
-            const ax=a%COLS-px,ay=(a/COLS|0)-py,bx=b%COLS-px,by=(b/COLS|0)-py;
-            return ax*ax+ay*ay-bx*bx-by*by||a-b;
-          });
-          eligible.length=Math.min(eligible.length,Math.max(150,Math.ceil(eligible.length*.3)));
-        }
+    // Parcours direct du Set des frontières : évite de recopier, filtrer
+    // et trier plusieurs fois la même ligne de front sur 500 royaumes.
+    const edge=frontiers[owner];
+    if(!edge.size)return [];
+    const eligible=[],fallback=c.aimOwner===NEUTRAL?null:[];
+    const island=c.island,focus=c.aimOwner;
+    for(const i of edge){
+      if(island&&regions[i]!==island)continue;
+      const other=tiles[i];
+      if(other===focus)eligible.push(i);
+      else if(fallback&&other===NEUTRAL)fallback.push(i);
+    }
+    if(!eligible.length&&fallback&&fallback.length){
+      eligible.push(...fallback);
+      if(count(focus)>0){
+        const px=sumsX[focus]/count(focus),py=sumsY[focus]/count(focus);
+        eligible.sort((a,b)=>{
+          const ax=a%COLS-px,ay=(a/COLS|0)-py,bx=b%COLS-px,by=(b/COLS|0)-py;
+          return ax*ax+ay*ay-bx*bx-by||a-b;
+        });
+        eligible.length=Math.min(eligible.length,Math.max(150,Math.ceil(eligible.length*.3)));
       }
     }
     if(!eligible.length)return [];
     const width=Math.min(330,Math.max(60,Math.round(Math.sqrt(c.initial)*12)));
     const take=Math.min(eligible.length,width),result=[];
-    // Progression espacée sur toute la largeur de front.
     const start=c.cursor%eligible.length;
     for(let k=0;k<take;k++){
       const slot=(start+Math.floor(k*eligible.length/take))%eligible.length;
