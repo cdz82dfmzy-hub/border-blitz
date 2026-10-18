@@ -1782,11 +1782,22 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       for(let k=0;k<landAreas.length;k++){
         const island=landAreas[(first+k)%landAreas.length];
         if(ownRegions[owner][island.id]||!island.waterZones.some(zone=>access.has(zone)))continue;
-        for(let t=0;t<Math.min(5,island.beaches.length);t++){
-          const b=island.beaches[Math.floor(Math.random()*island.beaches.length)];
-          if(tiles[b]!==NEUTRAL)continue;
+        for(let t=0;t<Math.min(7,island.beaches.length);t++){
+          const b=island.beaches[Math.floor(Math.random()*island.beaches.length)],defender=tiles[b];
+          if(defender===WATER||defender===owner)continue;
+          if(defender>=0){
+            if(fightingStrength(owner)<fightingStrength(defender)*
+              (aiDifficulty==='hard'?.82:aiDifficulty==='normal'?1:1.22))continue;
+            if(defender===0&&(ongoingAttacksOnPlayer()>=MAX_ATTACKERS_ON_PLAYER||
+               aiSeconds-lastAttackOnPlayer<AI_LEVELS[aiDifficulty].playerCooldown||
+               GAME_LENGTH-timeLeft<AI_LEVELS[aiDifficulty].playerDelay))continue;
+          }
           if(prepareShip(owner,b,35+Math.floor(Math.random()*22))){
-            aiStats.expansions++;return true;
+            if(defender>=0){
+              aiStats.wars++;
+              if(defender===0){aiStats.playerAttacks++;lastAttackOnPlayer=aiSeconds;}
+            }else aiStats.expansions++;
+            return true;
           }
         }
       }
