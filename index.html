@@ -232,7 +232,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
   let ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
   let shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};
-  let seaZone=new Int16Array(TOTAL),seaNav=null,lastShipDraw=0;
+  let seaZone=new Int16Array(TOTAL),seaNav=null,seaNavFine=null,lastShipDraw=0;
   const WATER=-2, NEUTRAL=-1;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
@@ -411,7 +411,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     islands=[];regions=new Int16Array(TOTAL);coast=new Uint8Array(TOTAL);
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
-    shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};seaNav=null;seaZone=new Int16Array(TOTAL);
+    shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};seaNav=null;seaNavFine=null;seaZone=new Int16Array(TOTAL);
     layer.width=COLS;layer.height=ROWS;
     pixels=layerCtx.createImageData(COLS,ROWS);layerDirty=true;fullLayerDirty=true;
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
@@ -621,13 +621,24 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       const indexCell=index(px,py);
       if(tiles[indexCell]===WATER)water[y*cols+x]=indexCell;
     }
-    seaNav={step,cols,rows,water};
+    seaNav={step,cols,rows,water};seaNavFine=null;
     for(const island of islands){
       const zones=new Set();
       for(const beach of island.beaches)
         for(const wet of shoreWater(beach))zones.add(seaZone[wet]);
       island.waterZones=[...zones].filter(z=>z>=0);
     }
+  }
+  function getFineSeaNavigation(){
+    if(seaNavFine)return seaNavFine;
+    // Grille plus précise réservée aux trajets maritimes difficiles du joueur.
+    const step=2,cols=Math.ceil(COLS/step),rows=Math.ceil(ROWS/step);
+    const water=new Int32Array(cols*rows);water.fill(-1);
+    for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+      const px=Math.min(COLS-1,x*step+1),py=Math.min(ROWS-1,y*step+1);
+      const i=index(px,py);if(tiles[i]===WATER)water[y*cols+x]=i;
+    }
+    seaNavFine={step,cols,rows,water};return seaNavFine;
   }
   function shoreWater(tile){
     const x=tile%COLS,y=tile/COLS|0,out=[];
@@ -648,11 +659,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     return true;
   }
-  function seaRoute(start,end){
+  function seaRoute(start,end,fine=false,allowPrecise=true){
     if(start<0||end<0||seaZone[start]<0||seaZone[start]!==seaZone[end])return null;
     const d=(a,b)=>Math.hypot(a%COLS-b%COLS,(a/COLS|0)-(b/COLS|0));
     if(waterLine(start,end))return {points:[start,end],length:d(start,end)};
-    const nav=seaNav,n=nav.water.length;
+    const nav=fine?getFineSeaNavigation():seaNav,n=nav.water.length;
     const candidateNodes=(tile)=>{
       const gx=Math.floor((tile%COLS)/nav.step),gy=Math.floor((tile/COLS|0)/nav.step);
       const choices=[];
@@ -668,7 +679,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       return choices.sort((a,b)=>a.cost-b.cost).slice(0,3);
     };
     const starts=candidateNodes(start),goals=candidateNodes(end);
-    if(!starts.length||!goals.length)return null;
+    if(!starts.length||!goals.length)return !fine&&allowPrecise&&seaNav.step>2?seaRoute(start,end,true,false):null;
     // A* sur une grille de navigation 2 à 4 fois moins dense que la carte.
     // Chaque arête est vérifiée sur les pixels d'eau d'origine.
     const dist=new Float64Array(n);dist.fill(Infinity);
@@ -695,7 +706,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     for(const s of starts){if(s.cost<dist[s.id]){dist[s.id]=s.cost;push(s.id,s.cost+heuristic(s.id));}}
     const vectors=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
     let finish=-1,expanded=0;
-    while(heap.length&&expanded++<52000){
+    while(heap.length&&expanded++<(fine?180000:52000)){
       const cur=pop().id;if(done[cur])continue;done[cur]=1;
       if(goalCost[cur]<Infinity){finish=cur;break;}
       const cx=cur%nav.cols,cy=cur/nav.cols|0;
@@ -711,7 +722,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
         }
       }
     }
-    if(finish<0)return null;
+    if(finish<0)return !fine&&allowPrecise&&seaNav.step>2?seaRoute(start,end,true,false):null;
     const route=[end];let current=finish,safety=0;
     while(current>=0&&safety++<n){
       route.push(nav.water[current]);current=prev[current];
@@ -1000,7 +1011,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
           }
         }
         if(startSea<0)continue;
-        const route=seaRoute(startSea,wetEnd);
+        const route=seaRoute(startSea,wetEnd,false,owner===0);
         if(!route||route.length>=bestLength)continue;
         bestLength=route.length;
         best={origin:startTile,landing:beach,shipPath:route.points,seaLength:route.length};
