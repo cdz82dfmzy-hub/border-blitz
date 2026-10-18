@@ -1,4 +1,4 @@
-/* Border Blitz V4.1.0 — compact GPU textures with territory refresh accounting.
+/* Border Blitz V4.2.0 — progressive territorial animation with compact GPU textures.
    WebGL2 layer for land/water/realm pixels; 2D canvas remains for labels and ships.
    World simulation and ownership remain authoritative in the game engine. */
 (function(global){
@@ -16,6 +16,12 @@ class BorderBlitzGpuRenderer {
     if(gl.getParameter(gl.MAX_TEXTURE_SIZE)<Math.max(cols,rows))throw new Error('Texture HD non prise en charge');
     this.calls=0;this.pixels=0;this.frames=0;this.skippedFrames=0;
     this.territoryFrames=0;this.cameraOnlyFrames=0;
+    this.visualIndices=new Int32Array(16384);
+    this.visualOwners=new Int16Array(16384);
+    this.visualRead=0;this.visualWrite=0;
+    this.visualDeadline=0;this.visualStarted=0;
+    this.animationFrames=0;this.animatedCells=0;this.peakPending=0;
+    this.maxAnimationDelay=0;this.queueGrowth=0;this.animationFlushes=0;
     this.ready=true;this.hasFrame=false;this.dirty=false;
     // Les 502 états (-2..499) tiennent en 16 bits : 2 octets par cellule.
     this.ownerPixels=new Uint8Array(cols*rows*2);
@@ -153,6 +159,58 @@ class BorderBlitzGpuRenderer {
     if(x>this.rowMax[y])this.rowMax[y]=x;
     this.dirty=true;
   }
+  // Rendu seulement : aucune modification des données militaires.
+  queue(i,owner){
+    if(!this.ready)return;
+    if(this.visualRead===this.visualWrite){
+      this.visualRead=0;this.visualWrite=0;
+      this.visualStarted=performance.now();
+      this.visualDeadline=this.visualStarted+80;
+    }
+    if(this.visualWrite===this.visualIndices.length){
+      const pending=this.visualWrite-this.visualRead;
+      if(this.visualRead>0){
+        this.visualIndices.copyWithin(0,this.visualRead,this.visualWrite);
+        this.visualOwners.copyWithin(0,this.visualRead,this.visualWrite);
+        this.visualRead=0;this.visualWrite=pending;
+      }else{
+        const size=this.visualIndices.length*2;
+        const ids=new Int32Array(size),owners=new Int16Array(size);
+        ids.set(this.visualIndices);owners.set(this.visualOwners);
+        this.visualIndices=ids;this.visualOwners=owners;this.queueGrowth++;
+      }
+    }
+    const p=this.visualWrite++;
+    this.visualIndices[p]=i;this.visualOwners[p]=owner;
+    this.peakPending=Math.max(this.peakPending,this.visualWrite-this.visualRead);
+  }
+  pendingAnimation(){return this.visualWrite-this.visualRead;}
+  advanceAnimation(now){
+    const pending=this.pendingAnimation();
+    if(!this.ready||!pending)return 0;
+    const remainingFrames=Math.max(1,Math.ceil((this.visualDeadline-now)/(1000/60)));
+    const count=Math.min(pending,Math.max(1,Math.ceil(pending/remainingFrames)));
+    for(let k=0;k<count;k++,this.visualRead++)
+      this.mark(this.visualIndices[this.visualRead],this.visualOwners[this.visualRead]);
+    this.animatedCells+=count;this.animationFrames++;
+    if(this.visualRead===this.visualWrite){
+      this.maxAnimationDelay=Math.max(this.maxAnimationDelay,Math.max(0,now-this.visualStarted));
+      this.visualRead=0;this.visualWrite=0;
+    }
+    return count;
+  }
+  flushAnimation(){
+    if(!this.ready)return 0;
+    const pending=this.pendingAnimation();
+    while(this.visualRead<this.visualWrite){
+      this.mark(this.visualIndices[this.visualRead],this.visualOwners[this.visualRead]);
+      this.visualRead++;
+    }
+    this.visualRead=0;this.visualWrite=0;
+    this.animatedCells+=pending;
+    if(pending)this.animationFlushes++;
+    return pending;
+  }
   upload(){
     if(!this.dirty)return;
     const gl=this.gl,cols=this.cols,rows=this.rows;
@@ -230,6 +288,7 @@ class BorderBlitzGpuRenderer {
     return true;
   }
   dispose(){
+    this.visualRead=0;this.visualWrite=0;
     this.ready=false;const gl=this.gl;if(!gl)return;
     gl.deleteTexture(this.textureOwners);gl.deleteTexture(this.textureRelief);
     gl.deleteTexture(this.texturePalette);gl.deleteVertexArray(this.vao);gl.deleteProgram(this.program);
