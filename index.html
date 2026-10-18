@@ -231,7 +231,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let islands=[],regions=new Int16Array(TOTAL),coast=new Uint8Array(TOTAL);
   let coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
   let ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
-  let shipStats={launched:0,landed:0,ai:0};
+  let shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};
+  let seaZone=new Int16Array(TOTAL),seaNav=null,lastShipDraw=0;
   const WATER=-2, NEUTRAL=-1;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
@@ -410,7 +411,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     islands=[];regions=new Int16Array(TOTAL);coast=new Uint8Array(TOTAL);
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
-    shipStats={launched:0,landed:0,ai:0};
+    shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};seaNav=null;seaZone=new Int16Array(TOTAL);
     layer.width=COLS;layer.height=ROWS;
     pixels=layerCtx.createImageData(COLS,ROWS);layerDirty=true;fullLayerDirty=true;
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
@@ -592,6 +593,150 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(islands.length+1));
+    buildSeaNavigation();
+  }
+  function buildSeaNavigation(){
+    // Chaque masse d'eau est identifiée séparément : un bateau sur l'océan
+    // ne peut pas naviguer par magie vers un lac fermé.
+    seaZone.fill(-1);
+    const q=new Int32Array(TOTAL);let basin=0;
+    for(let i=0;i<TOTAL;i++){
+      if(tiles[i]!==WATER||seaZone[i]>=0)continue;
+      let head=0,tail=1;q[0]=i;seaZone[i]=basin;
+      while(head<tail){
+        const p=q[head++],x=p%COLS,y=p/COLS|0;
+        if(x>0&&tiles[p-1]===WATER&&seaZone[p-1]<0){seaZone[p-1]=basin;q[tail++]=p-1;}
+        if(x<COLS-1&&tiles[p+1]===WATER&&seaZone[p+1]<0){seaZone[p+1]=basin;q[tail++]=p+1;}
+        if(y>0&&tiles[p-COLS]===WATER&&seaZone[p-COLS]<0){seaZone[p-COLS]=basin;q[tail++]=p-COLS;}
+        if(y<ROWS-1&&tiles[p+COLS]===WATER&&seaZone[p+COLS]<0){seaZone[p+COLS]=basin;q[tail++]=p+COLS;}
+      }
+      basin++;
+    }
+    const step=ACTIVE_REALMS>=200?4:ACTIVE_REALMS>=50?3:2;
+    const cols=Math.ceil(COLS/step),rows=Math.ceil(ROWS/step),water=new Int32Array(cols*rows);
+    water.fill(-1);
+    for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+      const px=Math.min(COLS-1,x*step+(step>>1));
+      const py=Math.min(ROWS-1,y*step+(step>>1));
+      const indexCell=index(px,py);
+      if(tiles[indexCell]===WATER)water[y*cols+x]=indexCell;
+    }
+    seaNav={step,cols,rows,water};
+  }
+  function shoreWater(tile){
+    const x=tile%COLS,y=tile/COLS|0,out=[];
+    if(x>0&&tiles[tile-1]===WATER)out.push(tile-1);
+    if(x<COLS-1&&tiles[tile+1]===WATER)out.push(tile+1);
+    if(y>0&&tiles[tile-COLS]===WATER)out.push(tile-COLS);
+    if(y<ROWS-1&&tiles[tile+COLS]===WATER)out.push(tile+COLS);
+    return out;
+  }
+  function waterLine(a,b){
+    if(tiles[a]!==WATER||tiles[b]!==WATER||seaZone[a]!==seaZone[b])return false;
+    const ax=a%COLS,ay=a/COLS|0,bx=b%COLS,by=b/COLS|0;
+    const distance=Math.hypot(bx-ax,by-ay),steps=Math.ceil(distance*2.5);
+    for(let n=1;n<steps;n++){
+      const p=n/steps;
+      const x=Math.round(ax+(bx-ax)*p),y=Math.round(ay+(by-ay)*p);
+      if(tiles[index(x,y)]!==WATER)return false;
+    }
+    return true;
+  }
+  function seaRoute(start,end){
+    if(start<0||end<0||seaZone[start]<0||seaZone[start]!==seaZone[end])return null;
+    const d=(a,b)=>Math.hypot(a%COLS-b%COLS,(a/COLS|0)-(b/COLS|0));
+    if(waterLine(start,end))return {points:[start,end],length:d(start,end)};
+    const nav=seaNav,n=nav.water.length;
+    const candidateNodes=(tile)=>{
+      const gx=Math.floor((tile%COLS)/nav.step),gy=Math.floor((tile/COLS|0)/nav.step);
+      const choices=[];
+      for(let radius=0;radius<=4&&choices.length<3;radius++){
+        for(let y=Math.max(0,gy-radius);y<=Math.min(nav.rows-1,gy+radius);y++)
+          for(let x=Math.max(0,gx-radius);x<=Math.min(nav.cols-1,gx+radius);x++){
+            if(radius&&Math.max(Math.abs(x-gx),Math.abs(y-gy))!==radius)continue;
+            const id=y*nav.cols+x,p=nav.water[id];
+            if(p<0||seaZone[p]!==seaZone[tile]||!waterLine(tile,p))continue;
+            choices.push({id,cost:d(tile,p)});
+          }
+      }
+      return choices.sort((a,b)=>a.cost-b.cost).slice(0,3);
+    };
+    const starts=candidateNodes(start),goals=candidateNodes(end);
+    if(!starts.length||!goals.length)return null;
+    // A* sur une grille de navigation 2 à 4 fois moins dense que la carte.
+    // Chaque arête est vérifiée sur les pixels d'eau d'origine.
+    const dist=new Float64Array(n);dist.fill(Infinity);
+    const prev=new Int32Array(n);prev.fill(-1);
+    const done=new Uint8Array(n),goalCost=new Float64Array(n);goalCost.fill(Infinity);
+    for(const v of goals)goalCost[v.id]=v.cost;
+    const heap=[];
+    const push=(id,score)=>{
+      let i=heap.length;heap.push({id,score});
+      while(i>0){const p=(i-1)>>1;if(heap[p].score<=score)break;heap[i]=heap[p];i=p;}
+      heap[i]={id,score};
+    };
+    const pop=()=>{
+      const result=heap[0],last=heap.pop();if(!heap.length)return result;
+      let i=0;
+      while(i*2+1<heap.length){
+        let k=i*2+1;if(k+1<heap.length&&heap[k+1].score<heap[k].score)k++;
+        if(heap[k].score>=last.score)break;
+        heap[i]=heap[k];i=k;
+      }
+      heap[i]=last;return result;
+    };
+    const heuristic=(id)=>d(nav.water[id],end);
+    for(const s of starts){if(s.cost<dist[s.id]){dist[s.id]=s.cost;push(s.id,s.cost+heuristic(s.id));}}
+    const vectors=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+    let finish=-1,expanded=0;
+    while(heap.length&&expanded++<52000){
+      const cur=pop().id;if(done[cur])continue;done[cur]=1;
+      if(goalCost[cur]<Infinity){finish=cur;break;}
+      const cx=cur%nav.cols,cy=cur/nav.cols|0;
+      for(const [ox,oy] of vectors){
+        const nx=cx+ox,ny=cy+oy;
+        if(nx<0||ny<0||nx>=nav.cols||ny>=nav.rows)continue;
+        const next=ny*nav.cols+nx;
+        if(done[next]||nav.water[next]<0||seaZone[nav.water[next]]!==seaZone[start])continue;
+        if(!waterLine(nav.water[cur],nav.water[next]))continue;
+        const nextCost=dist[cur]+d(nav.water[cur],nav.water[next]);
+        if(nextCost<dist[next]){
+          dist[next]=nextCost;prev[next]=cur;push(next,nextCost+heuristic(next));
+        }
+      }
+    }
+    if(finish<0)return null;
+    const route=[end];let current=finish,safety=0;
+    while(current>=0&&safety++<n){
+      route.push(nav.water[current]);current=prev[current];
+    }
+    route.push(start);route.reverse();
+    // Raccourcir les virages en supprimant les points inutiles, toujours en eau.
+    const smooth=[route[0]];let anchor=0;
+    for(let i=2;i<route.length;i++)if(!waterLine(route[anchor],route[i])){
+      smooth.push(route[i-1]);anchor=i-1;
+    }
+    smooth.push(route[route.length-1]);
+    let length=0;
+    for(let i=1;i<smooth.length;i++)length+=d(smooth[i-1],smooth[i]);
+    return {points:smooth,length};
+  }
+  function shipAt(c,now=performance.now()){
+    if(!c.shipPath||c.shipPath.length<2)return null;
+    const progress=Math.max(0,Math.min(1,(c.travelTotal-c.travel+
+      Math.min(1,Math.max(0,now-(c.lastSailAt||now))/WAVE_MS))/Math.max(1,c.travelTotal)));
+    let dist=progress*c.seaLength;
+    for(let k=1;k<c.shipPath.length;k++){
+      const a=c.shipPath[k-1],b=c.shipPath[k];
+      const x0=a%COLS+.5,y0=(a/COLS|0)+.5,x1=b%COLS+.5,y1=(b/COLS|0)+.5;
+      const length=Math.hypot(x1-x0,y1-y0);
+      if(k===c.shipPath.length-1||dist<=length){
+        const t=Math.min(1,Math.max(0,dist/Math.max(.0001,length)));
+        return {x:x0+(x1-x0)*t,y:y0+(y1-y0)*t,angle:Math.atan2(y1-y0,x1-x0)};
+      }
+      dist-=length;
+    }
+    return null;
   }
   function uploadDirtyPixels(){
     if(!layerDirty)return;
@@ -806,39 +951,67 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   function prepareShip(owner,target,pct){
     if(!requiresShip(owner,target))return false;
-    const island=islands[regions[target]-1],coastal=coastOwners[owner];
-    if(!coastal.size){if(owner===0)message('⛵ Il faut atteindre la côte avant d’embarquer.');return false;}
-    let landing=-1,best=Infinity;
+    const island=islands[regions[target]-1],ownedCoasts=coastOwners[owner];
+    if(!ownedCoasts.size){if(owner===0)message('⛵ Atteins d’abord une côte pour embarquer.');return false;}
+    const committed=maximumCommit(owner,pct);
+    if(committed<9){if(owner===0)message('⛵ Pas assez de soldats disponibles pour embarquer.');return false;}
     const tx=target%COLS,ty=target/COLS|0;
-    for(const i of island.beaches){
-      if(tiles[i]===owner)continue;
-      const dx=i%COLS-tx,dy=(i/COLS|0)-ty;
-      const score=dx*dx+dy*dy+(tiles[i]!==tiles[target]?400:0);
-      if(score<best){best=score;landing=i;}
+    const squared=(a,b)=>{const dx=a%COLS-b%COLS,dy=(a/COLS|0)-(b/COLS|0);return dx*dx+dy*dy;};
+    // Rechercher des plages autour du point touché plutôt que d'imposer une
+    // plage géométriquement proche, parfois tournée vers une autre mer.
+    const candidates=island.beaches.filter(i=>tiles[i]!==owner)
+      .map(i=>({tile:i,score:squared(i,target)+(tiles[i]!==tiles[target]?600:0)}))
+      .sort((a,b)=>a.score-b.score);
+    if(!candidates.length)return false;
+    const chosen=[];
+    for(const c of candidates){
+      if(chosen.length>=8)break;
+      if(chosen.every(v=>squared(c.tile,v)>Math.max(36,Math.round(island.cells/8))))chosen.push(c.tile);
     }
-    if(landing<0)return false;
-    const lx=landing%COLS,ly=landing/COLS|0;
-    let origin=-1;best=Infinity;
-    for(const i of coastal){
-      const dx=i%COLS-lx,dy=(i/COLS|0)-ly,dist=dx*dx+dy*dy;
-      if(dist<best){best=dist;origin=i;}
+    if(!chosen.length)chosen.push(candidates[0].tile);
+    let best=null,bestLength=Infinity;
+    for(const beach of chosen){
+      const destWater=shoreWater(beach);
+      for(const wetEnd of destWater){
+        const zone=seaZone[wetEnd];if(zone<0)continue;
+        let startTile=-1,startSea=-1,nearest=Infinity;
+        for(const shore of ownedCoasts){
+          for(const wetStart of shoreWater(shore)){
+            if(seaZone[wetStart]!==zone)continue;
+            const distance=squared(wetStart,wetEnd);
+            if(distance<nearest){nearest=distance;startTile=shore;startSea=wetStart;}
+          }
+        }
+        if(startSea<0)continue;
+        const route=seaRoute(startSea,wetEnd);
+        if(!route||route.length>=bestLength)continue;
+        bestLength=route.length;
+        best={origin:startTile,landing:beach,shipPath:route.points,seaLength:route.length};
+      }
+      if(best&&bestLength<30)break;
     }
-    if(origin<0)return false;
-    const committed=maximumCommit(owner,pct),distance=Math.sqrt(best);
-    const passage=Math.max(2,Math.min(14,2+distance*.012));
-    if(committed<8||committed<passage+2){if(owner===0)message('⛵ Pas assez de soldats pour cette traversée.');return false;}
-    const waves=Math.ceil(Math.min(7000,1800+distance*6)/WAVE_MS);
+    if(!best){
+      shipStats.rejected++;
+      if(owner===0)message('⛵ Aucune voie navigable : l’île est séparée de tes ports par la terre ou une autre mer.');
+      return false;
+    }
+    const passage=Math.max(2,Math.min(15,2+bestLength*.013));
+    if(committed<passage+3)return false;
+    const waves=Math.ceil(Math.min(14000,1650+bestLength*18)/WAVE_MS);
     armies[owner]-=committed;
-    const aim=tiles[target];
-    const campaign={budget:committed-passage,initial:committed,aimOwner:aim,
+    const campaign={budget:committed-passage,initial:committed,aimOwner:tiles[target],
       captured:0,wait:0,cursor:0,neutralSpent:passage,enemySpent:0,
-      naval:true,island:island.id,origin,landing,travel:waves,travelTotal:waves};
+      naval:true,island:island.id,origin:best.origin,landing:best.landing,
+      shipPath:best.shipPath,seaLength:best.seaLength,lastSailAt:performance.now(),
+      travel:waves,travelTotal:waves};
     if(owner===0){
       playerCampaigns.push(campaign);lastBattleReport=null;
-      message('<strong>⛵ Traversée vers îlot '+island.id+'</strong> · arrivée dans '+Math.ceil(waves*WAVE_MS/1000)+' s.');
+      message('<strong>⛵ Traversée maritime vers îlot '+island.id+
+        '</strong> · '+fmtTroops(committed)+' embarqués · arrivée dans '+Math.ceil(waves*WAVE_MS/1000)+' s.');
       render();
     }else{campaigns[owner]=campaign;shipStats.ai++;}
-    shipStats.launched++;return true;
+    shipStats.launched++;shipStats.routed++;
+    return true;
   }
   function disembark(owner,c){
     const tile=c.landing;if(tile<0||regions[tile]!==c.island||tiles[tile]===WATER)return false;
@@ -853,7 +1026,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       c.captured++;capturesSinceCleanup++;
       if(prior>=0&&!count(prior)){endCampaign(prior);armies[prior]=0;}
     }
-    c.naval=false;shipStats.landed++;
+    c.naval=false;c.shipPath=null;shipStats.landed++;
     if(owner===0)message('<strong>⛵ Débarquement effectué.</strong> Votre front avance sur l’île.');
     return true;
   }
@@ -1011,7 +1184,12 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const dt=lastCameraFrame?Math.min(100,now-lastCameraFrame):33;
     if(!lastCameraFrame||dt>=30){
       lastCameraFrame=now;
-      if(cameraStep(false,dt))draw();
+      const moved=cameraStep(false,dt);
+      const activeShip=playerCampaigns.some(c=>c.naval)||
+        campaigns.some(c=>c&&c.naval);
+      if(moved||(activeShip&&now-lastShipDraw>=70)){
+        lastShipDraw=now;draw();
+      }
     }
     if(typeof window.requestAnimationFrame==='function')
       cameraFrameId=window.requestAnimationFrame(animateCamera);
@@ -1109,21 +1287,29 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       ctx.fillRect(x-dx*.5,y-dy*.5,dx,dy);
     }
     ctx.globalAlpha=1;
+    // Chaque navire suit un chemin calculé sur l'eau. Son cap tourne avec
+    // les virages et son sillage reste derrière lui.
     for(let owner=0;owner<ACTIVE_REALMS;owner++){
       const list=owner===0?playerCampaigns:campaigns[owner]?[campaigns[owner]]:[];
       for(const c of list){
         if(!c.naval)continue;
-        const p=1-c.travel/Math.max(1,c.travelTotal);
-        const x=((c.origin%COLS+.5)*(1-p)+(c.landing%COLS+.5)*p)*dx;
-        const y=(((c.origin/COLS|0)+.5)*(1-p)+((c.landing/COLS|0)+.5)*p)*dy;
-        const px=x*zoom+offsetX,py=y*zoom+offsetY;
-        if(px<-20||px>mapW+20||py<-20||py>mapH+20)continue;
-        const a=8/zoom;
-        ctx.beginPath();ctx.moveTo(x-a,y);ctx.lineTo(x+a,y);
-        ctx.lineTo(x+a*.5,y+a*.5);ctx.lineTo(x-a*.5,y+a*.5);ctx.closePath();
-        ctx.fillStyle=owner===0?'#e5fbff':'#ffdf9c';ctx.fill();
-        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-a);
-        ctx.lineTo(x+a*.65,y-a*.2);ctx.closePath();ctx.fill();
+        const ship=shipAt(c,now);if(!ship)continue;
+        const x=ship.x*dx,y=ship.y*dy,px=x*zoom+offsetX,py=y*zoom+offsetY;
+        if(px<-25||px>mapW+25||py<-25||py>mapH+25)continue;
+        ctx.save();ctx.translate(x,y);ctx.rotate(ship.angle);
+        const a=10/zoom;
+        ctx.lineWidth=1/zoom;
+        ctx.strokeStyle=owner===0?'#b4f0ff':'#ffe3ad';
+        ctx.globalAlpha=.55;
+        ctx.beginPath();ctx.moveTo(-a*1.7,0);ctx.lineTo(-a*.65,-a*.4);
+        ctx.moveTo(-a*1.7,a*.45);ctx.lineTo(-a*.65,a*.4);ctx.stroke();
+        ctx.globalAlpha=1;
+        ctx.beginPath();ctx.moveTo(a,0);ctx.lineTo(-a*.45,-a*.52);
+        ctx.lineTo(-a*.9,0);ctx.lineTo(-a*.45,a*.52);ctx.closePath();
+        ctx.fillStyle=owner===0?'#c8f1ff':'#ffdb96';ctx.fill();
+        ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-a*.12,-a*.85);
+        ctx.lineTo(a*.38,0);ctx.closePath();ctx.fillStyle='#fff';ctx.fill();
+        ctx.restore();
       }
     }
     // Priorité au joueur, puis aux territoires les plus lisibles.
@@ -1270,6 +1456,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(!c||!running)return;
     if(c.naval){
       if(!count(owner)){if(owner===0)closePlayerCampaign(c);else endCampaign(owner);return;}
+      c.lastSailAt=performance.now();
       if(--c.travel>0)return;
       if(!disembark(owner,c)){if(owner===0)closePlayerCampaign(c);else endCampaign(owner);}
       return;
@@ -1680,8 +1867,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
-      availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
+    window.__borderBlitzTest={getState:()=>({seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+      availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
   // Supprimer une ancienne sauvegarde V2.3 : aucune partie ne persiste désormais.
