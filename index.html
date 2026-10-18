@@ -634,7 +634,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Profil côtier harmonique déterministe. Tous les points terrestres appartiennent
   // à un seul continent : pas de serveur, pas de génération aléatoire en cours de partie.
-  function isLand(x,y){
+  function isLand(x,y,visibleLobes=landLobes){
     const X=(x+.5)/COLS,Y=(y+.5)/ROWS;
     if(geography==='plains')return true;
     if(geography==='coastalplain'){
@@ -657,7 +657,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       return true;
     }
     if(geography==='archipelago'){
-      for(const l of landLobes){
+      for(const l of visibleLobes){
         const dx=X-l.x,dy=Y-l.y;
         if(Math.abs(dx)>l.rx*1.8||Math.abs(dy)>l.ry*1.8)continue;
         const ca=l.cos,sa=l.sin;
@@ -694,8 +694,20 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   function generateTerrain(){
     tiles.fill(WATER);regions.fill(-1);islands=[];totalLand=0;
-    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-      const i=index(x,y);if(isLand(x,y)){tiles[i]=NEUTRAL;totalLand++;}
+    // Les grands archipels ne testent que les lobes susceptibles de toucher
+    // la ligne courante (le seed et la géographie restent strictement identiques).
+    const rowLobes=geography==='archipelago'?Array.from({length:ROWS},()=>[]):null;
+    if(rowLobes)for(const l of landLobes){
+      const yMin=Math.max(0,Math.floor((l.y-l.ry*1.8)*ROWS)-1);
+      const yMax=Math.min(ROWS-1,Math.ceil((l.y+l.ry*1.8)*ROWS)+1);
+      for(let y=yMin;y<=yMax;y++)rowLobes[y].push(l);
+    }
+    for(let y=0;y<ROWS;y++){
+      const possible=rowLobes?rowLobes[y]:landLobes;
+      for(let x=0;x<COLS;x++){
+        const i=index(x,y);
+        if(isLand(x,y,possible)){tiles[i]=NEUTRAL;totalLand++;}
+      }
     }
     const rng=seededRandom((worldSeed^0x59dd421f)>>>0);
     // Îlots côtiers, groupes d'îles et parfois îles lacustres.
