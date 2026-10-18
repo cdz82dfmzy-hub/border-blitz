@@ -277,10 +277,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </details>
 <div id="modeInfo" class="menu-compact-info">50 joueurs · 10 min · Carte moyenne</div>
 <button type="button" id="generateWorld" class="menu-primary">Lancer la conquête →</button>
-
-
 </div>
-<div class="menu-footnote" id="menuStatus"></div>
 </div></section>
 <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="modal"><div class="symbol" id="resultSymbol">🏆</div><h2 id="resultTitle">Partie terminée</h2><p id="resultText"></p><button class="primary" id="playAgain">Nouvelle partie</button></div></div>
 <script>
@@ -2055,7 +2052,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(waveCount%8===0)finishLastPockets();
     followPlayer();
     if(waveCount%2===0)renderScore();
-    if(ACTIVE_REALMS<=200||waveCount%2===0)draw();
+    // Le front du joueur reste réactif même au maximum de 500 royaumes.
+    // Lorsque le joueur ne combat pas, l'affichage XL économise des images.
+    if(ACTIVE_REALMS<=200||playerCampaigns.length>0||waveCount%2===0)draw();
   }
 
   // Chaque IA joue à son propre rythme. Même 50 IA ne prennent pas
