@@ -587,6 +587,12 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     return ()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296;};
   }
   function configureWorld(){
+    // Une prévisualisation et une nouvelle partie doivent repartir d'un
+    // monde propre, jamais de la texture GPU de la partie précédente.
+    if(gpuRenderer){
+      try{gpuRenderer.dispose();}catch(e){}
+      gpuRenderer=null;gpuCanvas.style.display='none';
+    }
     // Slots totaux : le joueur occupe le premier, les autres sont des IA.
     // La taille de carte est adaptée automatiquement, sans limite artificielle
     // due aux anciens boutons 10 / 50 / 200.
@@ -2641,7 +2647,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       visualSamples:0
     };
     lastPerformanceReport='';
-    $('fpsLive').textContent='FPS — / —';
+    $('fpsLive').textContent=(gpuRenderer?'GPU':'2D')+' FPS — / —';
     $('perfResults').hidden=true;
     $('copyPerfFeedback').textContent='';
   }
@@ -2689,7 +2695,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const fps=p.framesInWindow*1000/elapsed;
     const draws=p.drawsInWindow*1000/elapsed;
     p.frames.push(fps);p.mapFrames.push(draws);
-    $('fpsLive').textContent='FPS '+Math.round(fps)+' / '+Math.round(draws);
+    $('fpsLive').textContent=(gpuRenderer?'GPU':'2D')+' '+Math.round(fps)+' / '+Math.round(draws);
     $('fpsLive').title='FPS navigateur : '+Math.round(fps)+' · Redessins carte/s : '+Math.round(draws);
     p.windowAt=now;p.framesInWindow=0;p.drawsInWindow=0;
   }
@@ -2842,6 +2848,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 
   function showMainMenu(){
     stopLoops();paused=true;running=false;
+    if(gpuRenderer){
+      try{gpuRenderer.dispose();}catch(e){}
+      gpuRenderer=null;gpuCanvas.style.display='none';
+    }
     $('result').classList.add('hidden');
     perfSession=null;
     $('gameApp').hidden=true;$('mainMenu').hidden=false;
