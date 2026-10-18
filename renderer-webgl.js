@@ -1,4 +1,4 @@
-/* Border Blitz V4.0 — GPU territory renderer.
+/* Border Blitz V4.0.2 — GPU territory renderer.
    WebGL2 layer for land/water/realm pixels; 2D canvas remains for labels and ships.
    World simulation and ownership remain authoritative in the game engine. */
 (function(global){
@@ -14,7 +14,8 @@ class BorderBlitzGpuRenderer {
     const gl=this.gl;
     if(!gl)throw new Error('WebGL2 absent');
     if(gl.getParameter(gl.MAX_TEXTURE_SIZE)<Math.max(cols,rows))throw new Error('Texture HD non prise en charge');
-    this.calls=0;this.pixels=0;this.frames=0;this.ready=true;
+    this.calls=0;this.pixels=0;this.frames=0;this.skippedFrames=0;
+    this.ready=true;this.hasFrame=false;this.dirty=false;
     this.ownerPixels=new Uint8Array(cols*rows*4);
     for(let i=0;i<tiles.length;i++)this.encode(i,tiles[i]);
     const reliefPixels=new Uint8Array(cols*rows*4);
@@ -44,7 +45,9 @@ class BorderBlitzGpuRenderer {
     this.uOffset=gl.getUniformLocation(this.program,'uOffset');
     this.uWorld=gl.getUniformLocation(this.program,'uWorld');
     this.uZoom=gl.getUniformLocation(this.program,'uZoom');
-    this.bandSize=256;this.bands=new Map();
+    // Groupes de lignes sales : aucun grand rectangle n'est imposé avant estimation.
+    this.rowMin=new Int32Array(rows);this.rowMax=new Int32Array(rows);
+    this.rowMin.fill(cols);this.rowMax.fill(-1);
   }
   encode(i,owner){
     const v=owner+2,j=i*4;
@@ -142,24 +145,44 @@ class BorderBlitzGpuRenderer {
   }
   mark(i,owner){
     this.encode(i,owner);
-    const x=i%this.cols,y=i/this.cols|0,index=y/this.bandSize|0;
-    const r=this.bands.get(index);
-    if(!r)this.bands.set(index,[x,x,y,y]);
-    else{
-      if(x<r[0])r[0]=x;
-      if(x>r[1])r[1]=x;
-      if(y<r[2])r[2]=y;
-      if(y>r[3])r[3]=y;
-    }
+    const y=(i/this.cols)|0,x=i-y*this.cols;
+    if(x<this.rowMin[y])this.rowMin[y]=x;
+    if(x>this.rowMax[y])this.rowMax[y]=x;
+    this.dirty=true;
   }
   upload(){
-    const gl=this.gl;
-    if(!this.bands.size)return;
+    if(!this.dirty)return;
+    const gl=this.gl,cols=this.cols,rows=this.rows;
+    // Sélection au coût estimé : transferts de pixels + coût fixe des appels GL.
+    // La copie complète reste un candidat : pas de surcoût catastrophique
+    // lorsque 500 fronts couvrent presque toute la carte.
+    const callCost=4096;
+    let best=null,bestCost=cols*rows+callCost;
+    for(const span of [1,16,64,256]){
+      const rects=[];let area=0;
+      for(let base=0;base<rows;base+=span){
+        const end=Math.min(base+span,rows);
+        let x0=cols,x1=-1,y0=rows,y1=-1;
+        for(let y=base;y<end;y++){
+          if(this.rowMax[y]<0)continue;
+          if(this.rowMin[y]<x0)x0=this.rowMin[y];
+          if(this.rowMax[y]>x1)x1=this.rowMax[y];
+          if(y<y0)y0=y;
+          y1=y;
+        }
+        if(x1<0)continue;
+        rects.push([x0,y0,x1-x0+1,y1-y0+1]);
+        area+=(x1-x0+1)*(y1-y0+1);
+      }
+      const cost=area+rects.length*callCost;
+      if(cost<bestCost){bestCost=cost;best=rects;}
+    }
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.textureOwners);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-    gl.pixelStorei(gl.UNPACK_ROW_LENGTH,this.cols);
-    for(const r of this.bands.values()){
-      const x=r[0],y=r[2],w=r[1]-x+1,h=r[3]-y+1;
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH,cols);
+    const rects=best||[[0,0,cols,rows]];
+    for(const r of rects){
+      const x=r[0],y=r[1],w=r[2],h=r[3];
       gl.pixelStorei(gl.UNPACK_SKIP_PIXELS,x);
       gl.pixelStorei(gl.UNPACK_SKIP_ROWS,y);
       gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,this.ownerPixels);
@@ -168,15 +191,22 @@ class BorderBlitzGpuRenderer {
     gl.pixelStorei(gl.UNPACK_SKIP_PIXELS,0);
     gl.pixelStorei(gl.UNPACK_SKIP_ROWS,0);
     gl.pixelStorei(gl.UNPACK_ROW_LENGTH,0);
-    this.bands.clear();
+    this.rowMin.fill(cols);this.rowMax.fill(-1);this.dirty=false;
   }
   resize(w,h){
+    if(this.canvas.width!==w||this.canvas.height!==h)this.hasFrame=false;
     if(this.canvas.width!==w)this.canvas.width=w;
     if(this.canvas.height!==h)this.canvas.height=h;
     this.gl.viewport(0,0,w,h);
   }
   render(cssW,cssH,worldW,worldH,offsetX,offsetY,zoom){
     if(!this.ready)return false;
+    if(this.hasFrame&&!this.dirty&&
+       this.lastCssW===cssW&&this.lastCssH===cssH&&
+       this.lastWorldW===worldW&&this.lastWorldH===worldH&&
+       this.lastOffsetX===offsetX&&this.lastOffsetY===offsetY&&this.lastZoom===zoom){
+      this.skippedFrames++;return false;
+    }
     const gl=this.gl;
     this.upload();
     gl.viewport(0,0,this.canvas.width,this.canvas.height);
@@ -187,7 +217,10 @@ class BorderBlitzGpuRenderer {
     gl.uniform2f(this.uWorld,worldW,worldH);
     gl.uniform1f(this.uZoom,zoom);
     gl.drawArrays(gl.TRIANGLES,0,3);
-    this.frames++;
+    this.frames++;this.hasFrame=true;
+    this.lastCssW=cssW;this.lastCssH=cssH;
+    this.lastWorldW=worldW;this.lastWorldH=worldH;
+    this.lastOffsetX=offsetX;this.lastOffsetY=offsetY;this.lastZoom=zoom;
     return true;
   }
   dispose(){
