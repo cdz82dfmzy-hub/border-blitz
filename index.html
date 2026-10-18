@@ -622,6 +622,12 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(tiles[indexCell]===WATER)water[y*cols+x]=indexCell;
     }
     seaNav={step,cols,rows,water};
+    for(const island of islands){
+      const zones=new Set();
+      for(const beach of island.beaches)
+        for(const wet of shoreWater(beach))zones.add(seaZone[wet]);
+      island.waterZones=[...zones].filter(z=>z>=0);
+    }
   }
   function shoreWater(tile){
     const x=tile%COLS,y=tile/COLS|0,out=[];
@@ -949,10 +955,21 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function requiresShip(owner,target){
     const island=regions[target];return island>0&&ownRegions[owner][island]===0;
   }
+  function availableSeas(owner){
+    const zones=new Set();
+    for(const shore of coastOwners[owner])
+      for(const water of shoreWater(shore))zones.add(seaZone[water]);
+    return zones;
+  }
   function prepareShip(owner,target,pct){
     if(!requiresShip(owner,target))return false;
     const island=islands[regions[target]-1],ownedCoasts=coastOwners[owner];
     if(!ownedCoasts.size){if(owner===0)message('⛵ Atteins d’abord une côte pour embarquer.');return false;}
+    const access=availableSeas(owner);
+    if(!island.waterZones.some(z=>access.has(z))){
+      if(owner===0)message('⛵ Cette île se trouve sur une mer ou un lac inaccessible depuis tes côtes.');
+      return false;
+    }
     const committed=maximumCommit(owner,pct);
     if(committed<9){if(owner===0)message('⛵ Pas assez de soldats disponibles pour embarquer.');return false;}
     const tx=target%COLS,ty=target/COLS|0;
@@ -1598,10 +1615,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     };
     const shipChance=aiDifficulty==='hard'?.18:aiDifficulty==='normal'?.11:.07;
     if(islands.length&&coastOwners[owner].size&&Math.random()<shipChance){
+      const access=availableSeas(owner);
       const first=Math.floor(Math.random()*islands.length);
       for(let k=0;k<islands.length;k++){
         const island=islands[(first+k)%islands.length];
-        if(ownRegions[owner][island.id])continue;
+        if(ownRegions[owner][island.id]||!island.waterZones.some(zone=>access.has(zone)))continue;
         for(let t=0;t<Math.min(5,island.beaches.length);t++){
           const b=island.beaches[Math.floor(Math.random()*island.beaches.length)];
           if(tiles[b]!==NEUTRAL)continue;
