@@ -154,12 +154,6 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
  border:1px solid #5282a2;border-radius:17px;box-shadow:0 18px 35px #0008}
 .menu-card h1{font-size:22px;margin:0}.menu-card p{font-size:12px;color:#b9d7e9;margin:0;line-height:1.4}
 .menu-label{font-size:10px;letter-spacing:.12em;color:#bbd9ec;font-weight:900}
-.mode-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.mode-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:69px;
- border:1px solid #4b7694;border-radius:11px;background:#1e3d56;color:#d8eeff}
-.mode-card strong{font-size:21px;font-weight:900}.mode-card span{font-size:10px;font-weight:750}
-.mode-card.selected{background:#216897;border-color:#b1e9ff;box-shadow:inset 0 0 0 1px #6bc9ff;color:white}
-.menu-native-select{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
 .menu-setting{display:flex;align-items:center;justify-content:space-between;gap:9px;
  border-bottom:1px solid #33566f;min-height:40px;font-size:12px;font-weight:750}
 .menu-setting[hidden]{display:none}
@@ -229,13 +223,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 <div class="menu-brand"><div class="menu-symbol">⚔</div><div class="menu-logo">BORDER <em>BLITZ</em></div><div class="menu-subtitle">CONQUÊTE DE TERRITOIRES</div></div>
 <div class="menu-card">
 <h1>Nouvelle partie</h1><p>Prépare ta conquête : choisis ta carte et règle la bataille.</p>
-<div class="menu-label">TAILLE DU MONDE</div>
-<div class="mode-cards" id="modeCards">
-<button type="button" data-slots="10" class="mode-card"><strong>10</strong><span>Joueurs</span></button>
-<button type="button" data-slots="50" class="mode-card selected"><strong>50</strong><span>Joueurs</span></button>
-<button type="button" data-slots="200" class="mode-card"><strong>200</strong><span>Joueurs</span></button>
-<button type="button" data-slots="500" class="mode-card"><strong>500</strong><span>Joueurs</span></button>
-</div>
+<div class="menu-label">NOMBRE DE JOUEURS</div>
 <div class="menu-setting"><label for="playerCount">Nombre de joueurs (vous inclus)</label><input id="playerCount" type="number" min="1" max="500" step="1" value="50" inputmode="numeric" aria-label="Nombre total de joueurs de 1 à 500" /></div>
 <div id="playerCountInfo" class="difficulty-info">50 joueurs = vous + 49 IA</div>
 <div class="menu-map">
@@ -2309,11 +2297,6 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   $('generateWorld').addEventListener('click',create);
 
   $('playAgain').addEventListener('click',showMainMenu);
-  $('modeCards').addEventListener('click',e=>{
-    const button=e.target.closest('button[data-slots]');if(!button)return;
-    $('playerCount').value=button.getAttribute('data-slots');
-    $('mapPreviewBox').hidden=true;updateMenuOptions();
-  });
   $('playerCount').addEventListener('input',()=>{$('mapPreviewBox').hidden=true;updateMenuOptions();});
   $('playerCount').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;updateMenuOptions(true);});
   $('matchDuration').addEventListener('change',updateMenuOptions);
@@ -2344,8 +2327,6 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(commit){n=Math.max(1,Math.min(500,Math.round(n)));$('playerCount').value=String(n);}
     else n=Math.max(1,Math.min(500,Math.round(n)));
     const world=n<=10?'small':n<=50?'50':n<=200?'200':'500';
-    for(const b of $('modeCards').querySelectorAll('button[data-slots]'))
-      b.classList.toggle('selected',Number(b.getAttribute('data-slots'))===n);
     const auto=world==='small'?5:world==='50'?10:world==='200'?15:20;
     const minutes=$('matchDuration').value==='auto'?auto:Number($('matchDuration').value);
     const notes={easy:'Déjà exigeant · Équivalent de l’ancien Difficile.',
