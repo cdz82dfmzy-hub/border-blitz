@@ -265,6 +265,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let geography='coast',bays=[],lakes=[],coastWarp=[0,0,0,0],mainlandCells=0;
   let autoSeed=true;
   let terrainRelief=new Uint8Array(TOTAL),shoreDepth=new Uint8Array(TOTAL);
+  let landLobes=[],landAreas=[];
   const MAP_THEMES=['coast','fjord','peninsula','lakes','lagoon','archipelago','halo','fracture','snow'];
   const MAP_NAMES={coast:'Côtes sauvages',fjord:'Fjords et golfes',peninsula:'Péninsules',
     lakes:'Plaine des lacs',lagoon:'Mers intérieures',archipelago:'Royaume des îles',
@@ -449,7 +450,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     aiStyle=new Uint8Array(ACTIVE_REALMS);
     aiLastEnemy=new Int16Array(ACTIVE_REALMS);aiLastAttack=new Float64Array(ACTIVE_REALMS);
     ACTIVE_SLOTS=Array.from({length:ACTIVE_REALMS},(_,i)=>i);
-    islands=[];regions=new Int16Array(TOTAL);coast=new Uint8Array(TOTAL);
+    islands=[];landAreas=[];regions=new Int16Array(TOTAL);coast=new Uint8Array(TOTAL);
     terrainRelief=new Uint8Array(TOTAL);shoreDepth=new Uint8Array(TOTAL);
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
@@ -475,6 +476,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     axisX=(wide?.464:.38)+(random()-.5)*(wide?.04:.12);
     axisY=(wide?.457:.374)+(random()-.5)*(wide?.04:.11);
     rotation=(random()-.5)*1.6;
+    landLobes=[];
+    if(geography==='archipelago'){
+      const n=4+Math.floor(random()*2);
+      for(let k=0;k<n;k++){
+        const a=(k+(random()-.5)*.13)*Math.PI*2/n;
+        landLobes.push({x:.5+Math.cos(a)*(.295+(random()-.5)*.030),
+          y:.5+Math.sin(a)*(.290+(random()-.5)*.035),
+          rx:.128+random()*.029,ry:.132+random()*.028,
+          phase:random()*6.283});
+      }
+    }
     coastWarp=[random()*6.283,random()*6.283,random()*6.283,random()*6.283];
     bays=[];
     const ndent=geography==='fjord'?12:geography==='fracture'?12:
@@ -508,35 +520,36 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   // Profil côtier harmonique déterministe. Tous les points terrestres appartiennent
   // à un seul continent : pas de serveur, pas de génération aléatoire en cours de partie.
   function isLand(x,y){
-    const dx=(x+.5)/COLS-centerX,dy=(y+.5)/ROWS-centerY;
-    const cr=Math.cos(rotation),sr=Math.sin(rotation);
+    const X=(x+.5)/COLS,Y=(y+.5)/ROWS;
+    if(geography==='archipelago'){
+      for(const l of landLobes){
+        const u=(X-l.x)/l.rx,v=(Y-l.y)/l.ry,angle=Math.atan2(v,u);
+        const limit=1+.09*Math.sin(3*angle+l.phase)+.05*Math.cos(7*angle+l.phase);
+        if(Math.hypot(u,v)<limit)return true;
+      }
+      return false;
+    }
+    const dx=X-centerX,dy=Y-centerY,cr=Math.cos(rotation),sr=Math.sin(rotation);
     const px=(dx*cr-dy*sr)/axisX,py=(dx*sr+dy*cr)/axisY;
     const wx=px+.055*Math.sin(py*7+coastWarp[0])+.025*Math.sin(py*17+coastWarp[1]);
     const wy=py+.055*Math.sin(px*7+coastWarp[2])+.024*Math.cos(px*19+coastWarp[3]);
-    const angle=Math.atan2(wy,wx);
-    let limit=1;
+    const angle=Math.atan2(wy,wx);let limit=1;
     for(let j=0;j<terrainFreq.length;j++)
       limit+=terrainAmp[j]*Math.sin(terrainFreq[j]*angle+terrainPhase[j]);
     for(const b of bays){
-      let delta=Math.abs(angle-b.angle);
-      if(delta>Math.PI)delta=2*Math.PI-delta;
+      let delta=Math.abs(angle-b.angle);if(delta>Math.PI)delta=2*Math.PI-delta;
       limit+=b.sign*b.depth*Math.exp(-.5*(delta/b.spread)**2);
     }
     if(geography==='peninsula')limit+=.14*Math.sin(angle*2+coastWarp[0]);
-    if(geography==='archipelago')limit+=.09*Math.cos(angle*4+coastWarp[3]);
-    if(geography==='fracture')limit+=.21*Math.sin(angle*3+coastWarp[2]);
+    if(geography==='fracture')limit+=.16*Math.sin(angle*3+coastWarp[2]);
     if(Math.hypot(wx,wy)>limit)return false;
-    // Véritables bras de mer traversants : ils découpent le continent en
-    // régions séparées, au lieu de simples creux sur une île ronde.
-    if(geography==='fracture'||geography==='archipelago'){
-      const gap=geography==='fracture'?.048:.042;
-      const f1=.76*px+.60*py+.11*Math.sin(py*5+coastWarp[0]);
-      const f2=.61*px-.79*py+.11*Math.cos(px*6+coastWarp[1]);
-      if(Math.abs(f1)<gap||Math.abs(f2-.33)<gap)return false;
+    if(geography==='fracture'){
+      const c1=.44+.088*Math.sin(Y*7.5+coastWarp[0])+.034*Math.cos(Y*17+coastWarp[1]);
+      const c2=.67+.061*Math.sin(Y*9+coastWarp[2]);
+      if(Math.abs(X-c1)<.020||Math.abs(X-c2)<.019)return false;
     }
     for(const lake of lakes){
-      const lx=(x+.5)/COLS-lake.x,ly=(y+.5)/ROWS-lake.y;
-      const cc=Math.cos(lake.rot),ss=Math.sin(lake.rot);
+      const lx=X-lake.x,ly=Y-lake.y,cc=Math.cos(lake.rot),ss=Math.sin(lake.rot);
       const u=(lx*cc-ly*ss)/lake.rx,v=(lx*ss+ly*cc)/lake.ry;
       const theta=Math.atan2(v,u);
       const shore=1+.17*Math.sin(3*theta+lake.phase)+.09*Math.cos(7*theta+lake.phase*1.5);
@@ -628,6 +641,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       const id=islands.length+1;idMap[i]=id;
       islands.push({id,cells:0,beaches:[],center:[0,0]});
     }
+    landAreas=[{id:0,cells:mainlandCells,beaches:[],center:[COLS*.5,ROWS*.5]},...islands];
     totalLand=0;coast.fill(0);coastPath=new Path2D();
     for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
       const i=index(x,y),old=provisional[i];
@@ -652,7 +666,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(x===COLS-1||tiles[i+1]===WATER){coastPath.moveTo(x+1,y);coastPath.lineTo(x+1,y+1);waterEdge=true;}
       if(y===0||tiles[i-COLS]===WATER){coastPath.moveTo(x,y);coastPath.lineTo(x+1,y);waterEdge=true;}
       if(y===ROWS-1||tiles[i+COLS]===WATER){coastPath.moveTo(x,y+1);coastPath.lineTo(x+1,y+1);waterEdge=true;}
-      if(waterEdge){coast[i]=1;if(regions[i]>0)islands[regions[i]-1].beaches.push(i);}
+      if(waterEdge){coast[i]=1;landAreas[regions[i]].beaches.push(i);}
     }
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(islands.length+1));
@@ -752,7 +766,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(tiles[indexCell]===WATER)water[y*cols+x]=indexCell;
     }
     seaNav={step,cols,rows,water};seaNavFine=null;
-    for(const island of islands){
+    for(const island of landAreas){
       const zones=new Set();
       for(const beach of island.beaches)
         for(const wet of shoreWater(beach))zones.add(seaZone[wet]);
@@ -1005,31 +1019,34 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function centers(i){return {x:(i%COLS+.5)/COLS,y:(Math.floor(i/COLS)+.5)/ROWS};}
 
   function chooseSpawns(){
-    const candidates=[],step=ACTIVE_REALMS<=10?8:ACTIVE_REALMS<=50?14:18,margin=ACTIVE_REALMS<=10?10:ACTIVE_REALMS<=50?12:10;
+    const candidates=[],step=ACTIVE_REALMS<=10?8:ACTIVE_REALMS<=50?14:18;
+    const margin=ACTIVE_REALMS<=10?10:ACTIVE_REALMS<=50?12:10;
+    const distributed=geography==='archipelago'||geography==='fracture';
     for(let y=margin;y<ROWS-margin;y+=step)for(let x=margin;x<COLS-margin;x+=step){
-      const region=regions[index(x,y)];
-      if(tiles[index(x,y)]!==NEUTRAL||region<0)continue;
-      if(regions[index(x-margin,y)]!==region||regions[index(x+margin,y)]!==region||
-         regions[index(x,y-margin)]!==region||regions[index(x,y+margin)]!==region)continue;
+      const tile=index(x,y),r=regions[tile];
+      if(tiles[tile]!==NEUTRAL||r<0)continue;
+      if(r>0&&(!distributed||landAreas[r].cells<1000))continue;
+      if(regions[index(x-margin,y)]!==r||regions[index(x+margin,y)]!==r||
+         regions[index(x,y-margin)]!==r||regions[index(x,y+margin)]!==r)continue;
       candidates.push([x,y]);
     }
-    if(candidates.length<ACTIVE_REALMS)throw new Error('Pas assez de terres');
-    let first=0,minCenter=Infinity;
+    if(candidates.length<ACTIVE_REALMS)throw Error('Pas assez de terrain pour les royaumes');
+    let first=0,best=Infinity;
     for(let i=0;i<candidates.length;i++){
-      const p=candidates[i],d=(p[0]-COLS*.46)**2+(p[1]-ROWS*.50)**2;
-      if(d<minCenter){minCenter=d;first=i;}
+      const p=candidates[i],d=(p[0]-COLS*.5)**2+(p[1]-ROWS*.5)**2;
+      if(d<best){best=d;first=i;}
     }
     const selected=[candidates[first]];
     const dist=candidates.map(([x,y])=>(x-selected[0][0])**2+(y-selected[0][1])**2);
     dist[first]=-1;
     for(let k=1;k<ACTIVE_REALMS;k++){
-      let pick=-1,best=-1;
-      for(let i=0;i<candidates.length;i++)if(dist[i]>best){best=dist[i];pick=i;}
-      const min=ACTIVE_REALMS<=10?35:ACTIVE_REALMS<=50?25:18;
-      if(pick<0||best<min*min)throw new Error('Capitales trop proches');
-      const selectedPos=candidates[pick];selected.push(selectedPos);
+      let pick=-1,largest=-1;
+      for(let i=0;i<candidates.length;i++)if(dist[i]>largest){largest=dist[i];pick=i;}
+      const min=ACTIVE_REALMS<=10?34:ACTIVE_REALMS<=50?23:15;
+      if(pick<0||largest<min*min)throw Error('Capitales trop rapprochées');
+      const chosen=candidates[pick];selected.push(chosen);
       for(let i=0;i<candidates.length;i++)if(dist[i]>=0){
-        const [x,y]=candidates[i],d=(x-selectedPos[0])**2+(y-selectedPos[1])**2;
+        const [x,y]=candidates[i],d=(x-chosen[0])**2+(y-chosen[1])**2;
         if(d<dist[i])dist[i]=d;
       }
       dist[pick]=-1;
@@ -1079,7 +1096,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     let total=0;for(const c of playerCampaigns)total+=Math.max(0,c.budget);
     return total;
   }
-  function playerFrontName(c){return c.island>0?'Îlot '+c.island+(c.naval?' ⛵':''):c.aimOwner<0?'Terres libres':'IA '+(c.aimOwner+1);}
+  function playerFrontName(c){return c.naval?'Traversée maritime ⛵':c.island>0?'Îlot '+c.island:c.aimOwner<0?'Terres libres':'IA '+(c.aimOwner+1);}
   function closePlayerCampaign(c){
     const index=playerCampaigns.indexOf(c);if(index<0)return null;
     const report=settlement(c);
@@ -1095,7 +1112,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
 
   function requiresShip(owner,target){
-    const island=regions[target];return island>0&&ownRegions[owner][island]===0;
+    const region=regions[target];return region>=0&&ownRegions[owner][region]===0;
   }
   function availableSeas(owner){
     const zones=new Set();
@@ -1105,7 +1122,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   function prepareShip(owner,target,pct){
     if(!requiresShip(owner,target))return false;
-    const island=islands[regions[target]-1],ownedCoasts=coastOwners[owner];
+    const island=landAreas[regions[target]],ownedCoasts=coastOwners[owner];
     if(!ownedCoasts.size){if(owner===0)message('⛵ Atteins d’abord une côte pour embarquer.');return false;}
     const access=availableSeas(owner);
     if(!island.waterZones.some(z=>access.has(z))){
@@ -1196,7 +1213,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     if(aimOwner>=0&&!count(aimOwner))return false;
     const island=regions[target];
-    let c=playerCampaigns.find(c=>c.aimOwner===aimOwner&&c.island===(island>0?island:undefined));
+    let c=playerCampaigns.find(c=>c.aimOwner===aimOwner&&(c.island??0)===island);
     if(requiresShip(0,target)&&!c){
       if(playerCampaigns.length>=MAX_PLAYER_FRONTS)return false;
       return prepareShip(0,target,pct);
@@ -1756,11 +1773,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       return success;
     };
     const shipChance=aiDifficulty==='hard'?.18:aiDifficulty==='normal'?.11:.07;
-    if(islands.length&&coastOwners[owner].size&&Math.random()<shipChance){
+    if(landAreas.length>1&&coastOwners[owner].size&&Math.random()<shipChance){
       const access=availableSeas(owner);
-      const first=Math.floor(Math.random()*islands.length);
-      for(let k=0;k<islands.length;k++){
-        const island=islands[(first+k)%islands.length];
+      const first=Math.floor(Math.random()*landAreas.length);
+      for(let k=0;k<landAreas.length;k++){
+        const island=landAreas[(first+k)%landAreas.length];
         if(ownRegions[owner][island.id]||!island.waterZones.some(zone=>access.has(zone)))continue;
         for(let t=0;t<Math.min(5,island.beaches.length);t++){
           const b=island.beaches[Math.floor(Math.random()*island.beaches.length)];
@@ -2037,7 +2054,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({mapSeed:worldSeed,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
