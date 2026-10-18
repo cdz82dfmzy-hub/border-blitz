@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.8</title>
+  <title>Border Blitz — Prototype V3.8.1</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -1216,6 +1216,14 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       frontiers[owner].add(i);
     else frontiers[owner].delete(i);
   }
+  // Mise à jour idempotente des voisins, sans fonction anonyme recréée
+  // pour chaque cellule conquise.
+  function syncNeighborFront(i,j,prev,next){
+    const other=tiles[j];
+    if(other>=0&&other!==prev&&other!==next)updateFrontAt(i,other);
+    if(prev>=0)updateFrontAt(j,prev);
+    if(next>=0)updateFrontAt(j,next);
+  }
   function changeTile(i,next){
     const prev=tiles[i];
     if(prev===WATER||next===WATER||prev===next||next>=ACTIVE_REALMS)return false;
@@ -1249,17 +1257,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     // éventuelle est idempotente et moins coûteuse qu'une allocation.
     if(prev>=0)updateFrontAt(i,prev);
     if(next>=0)updateFrontAt(i,next);
-    const touch=(j)=>{
-      if(j<0)return;
-      const other=tiles[j];
-      if(other>=0&&other!==prev&&other!==next)updateFrontAt(i,other);
-      if(prev>=0)updateFrontAt(j,prev);
-      if(next>=0)updateFrontAt(j,next);
-    };
-    if(x>0)touch(i-1);
-    if(x<COLS-1)touch(i+1);
-    if(y>0)touch(i-COLS);
-    if(y<ROWS-1)touch(i+COLS);
+    if(x>0)syncNeighborFront(i,i-1,prev,next);
+    if(x<COLS-1)syncNeighborFront(i,i+1,prev,next);
+    if(y>0)syncNeighborFront(i,i-COLS,prev,next);
+    if(y<ROWS-1)syncNeighborFront(i,i+COLS,prev,next);
     return true;
   }
   function rebuildFrontiers(){
@@ -1695,7 +1696,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(now-lastShipDraw>=frameGap){
         const activeShip=playerCampaigns.some(c=>c.naval)||
           campaigns.some(c=>c&&c.naval);
-        if(moved||activeShip){lastShipDraw=now;draw();}
+        if(moved||activeShip){lastShipDraw=now;drawThrottled();}
       }
     }
     if(typeof window.requestAnimationFrame==='function')
@@ -1814,7 +1815,17 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     ctx.globalAlpha=.88;ctx.stroke(path);
     ctx.globalAlpha=1;ctx.restore();
   }
+  let lastThrottledDraw=-Infinity,coalescedFrames=0;
+  function drawThrottled(){
+    // Une grande bataille lance trois sources de rafraîchissement
+    // (vagues, caméra et horloge). Éviter les dessins redondants :
+    // le moteur militaire reste indépendant de la cadence graphique.
+    const now=performance.now(),interval=ACTIVE_REALMS>350?72:ACTIVE_REALMS>200?54:0;
+    if(interval&&now-lastThrottledDraw<interval){coalescedFrames++;return;}
+    draw();
+  }
   function draw(){
+    lastThrottledDraw=performance.now();
     const dx=worldW/COLS,dy=worldH/ROWS;
     ctx.save();ctx.clearRect(0,0,mapW,mapH);
     ctx.fillStyle='#17394c';ctx.fillRect(0,0,mapW,mapH);
@@ -1915,7 +1926,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     ctx.globalAlpha=1;ctx.restore();
   }
-  function render(){renderScore();draw();}
+  function render(){renderScore();drawThrottled();}
   /* Zoom preserves a constant-size kingdom label in screen pixels. */
   function endCampaign(owner){
     if(owner===0){
@@ -1988,7 +1999,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     // et trier plusieurs fois la même ligne de front sur 500 royaumes.
     const edge=frontiers[owner];
     if(!edge.size)return [];
-    const eligible=[],fallback=c.aimOwner===NEUTRAL?null:[];
+    let eligible=[],fallback=c.aimOwner===NEUTRAL?null:[];
     const island=c.island,focus=c.aimOwner;
     for(const i of edge){
       if(island&&regions[i]!==island)continue;
@@ -1997,7 +2008,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       else if(fallback&&other===NEUTRAL)fallback.push(i);
     }
     if(!eligible.length&&fallback&&fallback.length){
-      eligible.push(...fallback);
+      eligible=fallback;
       if(count(focus)>0){
         const px=sumsX[focus]/count(focus),py=sumsY[focus]/count(focus);
         eligible.sort((a,b)=>{
@@ -2008,7 +2019,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       }
     }
     if(!eligible.length)return [];
-    const width=Math.min(330,Math.max(60,Math.round(Math.sqrt(c.initial)*12)));
+    const width=c.frontWidth||(c.frontWidth=Math.min(330,Math.max(60,Math.round(Math.sqrt(c.initial)*12))));
     const take=Math.min(eligible.length,width),result=[];
     const start=c.cursor%eligible.length;
     for(let k=0;k<take;k++){
@@ -2127,7 +2138,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(waveCount%2===0)renderScore();
     // Le front du joueur reste réactif même au maximum de 500 royaumes.
     // Lorsque le joueur ne combat pas, l'affichage XL économise des images.
-    if(ACTIVE_REALMS<=200||playerCampaigns.length>0||waveCount%2===0)draw();
+    if(ACTIVE_REALMS<=200||playerCampaigns.length>0||waveCount%2===0)drawThrottled();
   }
 
   // Chaque IA joue à son propre rythme. Même 50 IA ne prennent pas
@@ -2470,7 +2481,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     $('scoreboard').innerHTML=scoreMarkup();startArmyPositions();
     armies.fill(180);armies[0]=220;
     campaigns.fill(null);playerCampaigns.length=0;flashing.clear();lastBattleReport=null;
-    waveCount=0;capturesSinceCleanup=0;
+    waveCount=0;capturesSinceCleanup=0;lastThrottledDraw=-Infinity;coalescedFrames=0;
     running=true;paused=false;timeLeft=GAME_LENGTH;percent=Number($('initialPower').value)||50;touched=null;lastMessage='';
     pointers.clear();pinch=null;preventTapAfterPinch=false;
     zoom=1;offsetX=0;offsetY=0;autoFollow=true;cameraTarget=null;
@@ -2484,7 +2495,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered,coastCacheBuilds,coastVisibleSegments,coastTotalSegments:contourSegments}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered,coastCacheBuilds,coastVisibleSegments,coastTotalSegments:contourSegments,coalescedFrames}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       detailedFillStyle,frontSpeed,availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   updateMenuOptions(true);
