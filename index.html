@@ -376,6 +376,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   const layer=document.createElement('canvas');layer.width=COLS;layer.height=ROWS;
   const layerCtx=layer.getContext('2d');
   let pixels=layerCtx.createImageData(COLS,ROWS);
+  // Actualiser uniquement les blocs de la texture touchés par les fronts.
+  const DIRTY_CHUNK=128;
+  let dirtyChunkCols=1,dirtyChunkRows=1;
+  const dirtyChunks=new Set();
+  let chunkUploads=0,chunkPixels=0;
   let layerDirty=true,fullLayerDirty=true;
   let dirtyX0=COLS,dirtyX1=-1,dirtyY0=ROWS,dirtyY1=-1;
   let fullUploads=0,partialUploads=0,boundsScans=0,aliveCount=ACTIVE_REALMS;
@@ -421,6 +426,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       const x=i%COLS,y=i/COLS|0;
       if(x<dirtyX0)dirtyX0=x;if(x>dirtyX1)dirtyX1=x;
       if(y<dirtyY0)dirtyY0=y;if(y>dirtyY1)dirtyY1=y;
+      dirtyChunks.add((y/DIRTY_CHUNK|0)*dirtyChunkCols+(x/DIRTY_CHUNK|0));
     }
   }
   // Frontières dessinées dans la texture mise en cache.
@@ -535,6 +541,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};seaNav=null;seaNavFine=null;seaZone=new Int16Array(TOTAL);
     layer.width=COLS;layer.height=ROWS;
     pixels=layerCtx.createImageData(COLS,ROWS);layerDirty=true;fullLayerDirty=true;
+    dirtyChunkCols=Math.ceil(COLS/DIRTY_CHUNK);
+    dirtyChunkRows=Math.ceil(ROWS/DIRTY_CHUNK);dirtyChunks.clear();
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
     playerBounds=null;playerBoundsDirty=true;aliveCount=ACTIVE_REALMS;
     borderDirtyAll=true;borderDirty.clear();
@@ -1156,11 +1164,26 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   function uploadDirtyPixels(){
     if(!layerDirty)return;
-    const width=dirtyX1-dirtyX0+1,height=dirtyY1-dirtyY0+1;
-    if(!fullLayerDirty&&width>0&&height>0&&width*height<TOTAL*.76){
-      layerCtx.putImageData(pixels,0,0,dirtyX0,dirtyY0,width,height);partialUploads++;
-    }else{layerCtx.putImageData(pixels,0,0);fullUploads++;}
-    layerDirty=false;fullLayerDirty=false;
+    if(fullLayerDirty){
+      layerCtx.putImageData(pixels,0,0);fullUploads++;
+    }else if(dirtyChunks.size){
+      const chunks=dirtyChunks.size,totalChunks=dirtyChunkCols*dirtyChunkRows;
+      if(chunks>Math.min(90,totalChunks*.72)){
+        layerCtx.putImageData(pixels,0,0);fullUploads++;
+      }else{
+        for(const block of dirtyChunks){
+          const x=(block%dirtyChunkCols)*DIRTY_CHUNK;
+          const y=(block/dirtyChunkCols|0)*DIRTY_CHUNK;
+          const w=Math.min(DIRTY_CHUNK,COLS-x),height=Math.min(DIRTY_CHUNK,ROWS-y);
+          layerCtx.putImageData(pixels,0,0,x,y,w,height);
+          chunkPixels+=w*height;chunkUploads++;
+        }
+        partialUploads++;
+      }
+    }else{
+      layerCtx.putImageData(pixels,0,0);fullUploads++;
+    }
+    layerDirty=false;fullLayerDirty=false;dirtyChunks.clear();
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
   }
   function recalcPlayerBounds(){
@@ -1517,8 +1540,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     $('board').parentElement.classList.toggle('combat-open',open);
     toggle.setAttribute('aria-expanded',String(open));
     toggle.setAttribute('aria-label',open?'Fermer les commandes de combat':'Ouvrir les commandes de combat');
+    if(open){renderPower();renderWar();}
   }
   function renderPower(){
+    const active=playerCampaigns.length;
+    $('combatToggle').textContent='⚔ '+percent+' %'+(active?' · '+active+' front'+(active>1?'s':''):'');
+    $('combatToggle').title=active?active+' offensives actives':'Régler la puissance d’attaque';
+    if($('combatPanel').hidden)return;
     slider.value=String(percent);$('powerValue').textContent=percent+' %';
     slider.style.setProperty('--fill',percent+'%');
     const sent=maximumCommit(0,percent),engaged=playerCommitted();
@@ -1527,11 +1555,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     $('totalArmy').textContent=fmtTroops(armies[0]);
     $('armyStatus').textContent='En campagne : '+fmtTroops(engaged);
     $('production').textContent='+'+fmtTroops(prod(0))+'/s';
-    const active=playerCampaigns.length;
-    $('combatToggle').textContent='⚔ '+percent+' %'+(active?' · '+active+' front'+(active>1?'s':''):'');
-    $('combatToggle').title=active?active+' offensives actives':'Régler la puissance d’attaque';
   }
   function renderWar(){
+    if($('combatPanel').hidden)return;
     const n=playerCampaigns.length;
     stopBtn.disabled=!running||n===0;
     stopBtn.textContent=n>1?'Tout arrêter':'Arrêter';
@@ -1634,10 +1660,13 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(!lastCameraFrame||dt>=30){
       lastCameraFrame=now;
       const moved=cameraStep(false,dt);
-      const activeShip=playerCampaigns.some(c=>c.naval)||
-        campaigns.some(c=>c&&c.naval);
-      if(moved||(activeShip&&now-lastShipDraw>=70)){
-        lastShipDraw=now;draw();
+      // Un intervalle raisonnable pour Safari sur une carte de 2,6 millions
+      // de pixels. Les vagues et l'IA ne sont jamais ralenties.
+      const frameGap=ACTIVE_REALMS>200?85:45;
+      if(now-lastShipDraw>=frameGap){
+        const activeShip=playerCampaigns.some(c=>c.naval)||
+          campaigns.some(c=>c&&c.naval);
+        if(moved||activeShip){lastShipDraw=now;draw();}
       }
     }
     if(typeof window.requestAnimationFrame==='function')
@@ -2383,7 +2412,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       detailedFillStyle,frontSpeed,availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   updateMenuOptions(true);
