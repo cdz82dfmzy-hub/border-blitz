@@ -1,4 +1,4 @@
-/* Border Blitz V4.0.3 — compact GPU territory textures.
+/* Border Blitz V4.1.0 — compact GPU textures with territory refresh accounting.
    WebGL2 layer for land/water/realm pixels; 2D canvas remains for labels and ships.
    World simulation and ownership remain authoritative in the game engine. */
 (function(global){
@@ -15,6 +15,7 @@ class BorderBlitzGpuRenderer {
     if(!gl)throw new Error('WebGL2 absent');
     if(gl.getParameter(gl.MAX_TEXTURE_SIZE)<Math.max(cols,rows))throw new Error('Texture HD non prise en charge');
     this.calls=0;this.pixels=0;this.frames=0;this.skippedFrames=0;
+    this.territoryFrames=0;this.cameraOnlyFrames=0;
     this.ready=true;this.hasFrame=false;this.dirty=false;
     // Les 502 états (-2..499) tiennent en 16 bits : 2 octets par cellule.
     this.ownerPixels=new Uint8Array(cols*rows*2);
@@ -210,6 +211,7 @@ class BorderBlitzGpuRenderer {
       this.skippedFrames++;return false;
     }
     const gl=this.gl;
+    const hadTerritoryChanges=this.dirty;
     this.upload();
     gl.viewport(0,0,this.canvas.width,this.canvas.height);
     gl.useProgram(this.program);gl.bindVertexArray(this.vao);
@@ -220,6 +222,8 @@ class BorderBlitzGpuRenderer {
     gl.uniform1f(this.uZoom,zoom);
     gl.drawArrays(gl.TRIANGLES,0,3);
     this.frames++;this.hasFrame=true;
+    if(hadTerritoryChanges)this.territoryFrames++;
+    else this.cameraOnlyFrames++;
     this.lastCssW=cssW;this.lastCssH=cssH;
     this.lastWorldW=worldW;this.lastWorldH=worldH;
     this.lastOffsetX=offsetX;this.lastOffsetY=offsetY;this.lastZoom=zoom;
