@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V3.11</title>
+  <title>Border Blitz — Prototype V3.12</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -224,7 +224,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.11 • FLUIDITÉ XL</span></div><div class="top-buttons"><span id="fpsLive" class="fps-live" title="FPS navigateur / rafraîchissements de la carte" aria-live="off">FPS — / —</span><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Interrompre la partie et afficher le rapport FPS">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.12 • CANVAS XL</span></div><div class="top-buttons"><span id="fpsLive" class="fps-live" title="FPS navigateur / rafraîchissements de la carte" aria-live="off">FPS — / —</span><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Interrompre la partie et afficher le rapport FPS">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><button type="button" id="combatToggle" class="combat-toggle" aria-controls="combatPanel" aria-expanded="false" aria-label="Ouvrir les commandes de combat">⚔ 50 %</button><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -407,6 +407,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   // 128×128 pixels lorsque seule une mince frontière a changé.
   const dirtyChunkRects=new Map();
   let chunkUploads=0,chunkPixels=0,uploadedPixels=0,mergedUploads=0,mergedExtraPixels=0;
+  const uploadModes={precise:0,bands256:0,bands512:0,full:0};
+  let largestUploadBatch=0;
   let layerDirty=true,fullLayerDirty=true;
   let dirtyX0=COLS,dirtyX1=-1,dirtyY0=ROWS,dirtyY1=-1;
   let fullUploads=0,partialUploads=0,boundsScans=0,aliveCount=ACTIVE_REALMS;
@@ -1204,22 +1206,45 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function uploadDirtyPixels(){
     if(!layerDirty)return;
     const started=performance.now();
-    if(fullLayerDirty){
-      layerCtx.putImageData(pixels,0,0);fullUploads++;uploadedPixels+=TOTAL;
-    }else if(dirtyChunkRects.size){
-      // Évaluer la surface réellement sale plutôt que le simple nombre
-      // de blocs touchés : 100 frontières fines restent moins coûteuses
-      // qu'un téléversement complet de la carte géante.
-      let dirtyArea=0;
-      for(const r of dirtyChunkRects.values())
-        dirtyArea+=(r[1]-r[0]+1)*(r[3]-r[2]+1);
-      if(dirtyArea>=TOTAL*.82){
-        layerCtx.putImageData(pixels,0,0);fullUploads++;uploadedPixels+=TOTAL;
+    if(fullLayerDirty||!dirtyChunkRects.size){
+      layerCtx.putImageData(pixels,0,0);fullUploads++;uploadedPixels+=TOTAL;uploadModes.full++;
+    }else{
+      // Le navigateur iOS paie surtout le coût fixe de chaque putImageData.
+      // On compare des rectangles précis et des bandes horizontales de
+      // 256/512 px. Pour 500 joueurs, la méthode limite les appels à 6.
+      const precise=[...dirtyChunkRects.values()].map(r=>r.slice());
+      const originalCount=precise.length;
+      const fullRect=[[0,COLS-1,0,ROWS-1]];
+      function strips(stride){
+        const groups=new Map();
+        for(const r of precise){
+          const first=Math.floor(r[2]/stride),last=Math.floor(r[3]/stride);
+          for(let g=first;g<=last;g++){
+            const y0=Math.max(r[2],g*stride),y1=Math.min(r[3],(g+1)*stride-1);
+            let row=groups.get(g);
+            if(!row)groups.set(g,[r[0],r[1],y0,y1]);
+            else{
+              if(r[0]<row[0])row[0]=r[0];
+              if(r[1]>row[1])row[1]=r[1];
+              if(y0<row[2])row[2]=y0;
+              if(y1>row[3])row[3]=y1;
+            }
+          }
+        }
+        return [...groups.values()];
+      }
+      function area(rects){
+        let n=0;for(const r of rects)n+=(r[1]-r[0]+1)*(r[3]-r[2]+1);return n;
+      }
+      const candidates=[{name:'full',rects:fullRect,area:TOTAL}];
+      if(ACTIVE_REALMS>200){
+        const bands256=strips(256),bands512=strips(512);
+        candidates.push({name:'bands256',rects:bands256,area:area(bands256)});
+        candidates.push({name:'bands512',rects:bands512,area:area(bands512)});
+        if(originalCount<=6)candidates.push({name:'precise',rects:precise,area:area(precise)});
       }else{
-        // Réduire la quantité d'appels natifs putImageData sur Safari.
-        // Un petit surcoût de surface est préférable à plusieurs transferts
-        // JS → Canvas distincts. On limite le surcoût à 1900 pixels/fusion.
-        const rects=[...dirtyChunkRects.values()].map(r=>r.slice());
+        // Les petites cartes gardent le rendu précis qui est déjà fluide.
+        const rects=precise;
         const mergePass=(axis)=>{
           rects.sort((a,b)=>a[axis]-b[axis]||a[axis===2?0:2]-b[axis===2?0:2]);
           let write=0;
@@ -1232,10 +1257,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
               const a=(prev[1]-prev[0]+1)*(prev[3]-prev[2]+1);
               const b=(cur[1]-cur[0]+1)*(cur[3]-cur[2]+1);
               const together=(x1-x0+1)*(y1-y0+1);
-              // Limite supplémentaire : ne jamais joindre des zones
-              // éloignées par plus d'un bloc, même si elles sont fines.
-              const near=axis===2?cur[2]<=prev[3]+DIRTY_CHUNK:
-                cur[0]<=prev[1]+DIRTY_CHUNK;
+              const near=axis===2?cur[2]<=prev[3]+DIRTY_CHUNK:cur[0]<=prev[1]+DIRTY_CHUNK;
               if(near&&together<=a+b+1900){
                 mergedExtraPixels+=Math.max(0,together-a-b);
                 prev[0]=x0;prev[1]=x1;prev[2]=y0;prev[3]=y1;
@@ -1247,22 +1269,30 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
           rects.length=write;
         };
         mergePass(2);mergePass(0);
-        let mergedArea=0;
-        for(const r of rects)mergedArea+=(r[1]-r[0]+1)*(r[3]-r[2]+1);
-        if(mergedArea>=TOTAL*.82){
-          layerCtx.putImageData(pixels,0,0);fullUploads++;uploadedPixels+=TOTAL;
-        }else{
-          for(const r of rects){
-            const x=r[0],y=r[2],w=r[1]-x+1,height=r[3]-y+1;
-            layerCtx.putImageData(pixels,0,0,x,y,w,height);
-            const area=w*height;chunkPixels+=area;uploadedPixels+=area;chunkUploads++;
-          }
-          partialUploads++;
-        }
+        candidates.push({name:'precise',rects,area:area(rects)});
       }
-    }else{
-      // Filet de sécurité : le marquage global n'a pas identifié la zone.
-      layerCtx.putImageData(pixels,0,0);fullUploads++;uploadedPixels+=TOTAL;
+      // Score empirique : un appel Canvas équivaut à la copie de dizaines de
+      // milliers de pixels. Le score ne pilote jamais les règles militaires.
+      const callPenalty=ACTIVE_REALMS>350?45000:ACTIVE_REALMS>200?32000:11000;
+      let choice=candidates[0],cost=TOTAL+callPenalty;
+      for(const c of candidates){
+        const score=c.area+c.rects.length*callPenalty;
+        if(score<cost){cost=score;choice=c;}
+      }
+      const calls=choice.rects.length;
+      if(calls>largestUploadBatch)largestUploadBatch=calls;
+      if(choice.name==='full'){
+        layerCtx.putImageData(pixels,0,0);fullUploads++;uploadedPixels+=TOTAL;
+      }else{
+        for(const r of choice.rects){
+          const x=r[0],y=r[2],w=r[1]-x+1,height=r[3]-y+1;
+          layerCtx.putImageData(pixels,0,0,x,y,w,height);
+          const count=w*height;chunkPixels+=count;uploadedPixels+=count;chunkUploads++;
+        }
+        partialUploads++;
+      }
+      uploadModes[choice.name]++;
+      if(ACTIVE_REALMS>200)mergedUploads+=Math.max(0,originalCount-calls);
     }
     layerDirty=false;fullLayerDirty=false;dirtyChunks.clear();dirtyChunkRects.clear();
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
@@ -2544,7 +2574,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       framesInWindow:0,drawsInWindow:0,frames:[],mapFrames:[],
       slow50:0,slow100:0,slow250:0,maxGap:0,
       work:{draw:[],waves:[],combat:[],upload:[],outlines:[],ai:[],tick:[]},
-      uploadsStart:{full:fullUploads,partial:partialUploads,chunks:chunkUploads,pixels:uploadedPixels,merged:mergedUploads},
+      uploadsStart:{full:fullUploads,partial:partialUploads,chunks:chunkUploads,pixels:uploadedPixels,
+        merged:mergedUploads,modes:{...uploadModes}},
       game:{slots:ACTIVE_REALMS,ai:ACTIVE_REALMS-1,theme:geography,seed:worldSeed,
         difficulty:aiDifficulty,size:COLS+'×'+ROWS,dpr:Math.min(2,window.devicePixelRatio||1),
         canvas:Math.round(mapW)+'×'+Math.round(mapH),duration:GAME_LENGTH},
@@ -2630,7 +2661,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
         ' FPS ; carte '+number(performanceStats(redraw).mean)+' dessins/s');
     }
     const lines=[
-      'BORDER BLITZ — RAPPORT DE PERFORMANCE V3.11',
+      'BORDER BLITZ — RAPPORT DE PERFORMANCE V3.12',
       'État : '+reason,
       'Joueurs : '+p.game.slots+' (vous + '+p.game.ai+' IA)',
       'Carte : '+p.game.theme+' · Seed : '+p.game.seed,
@@ -2668,6 +2699,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       '  Téléversements partiels : '+(partialUploads-p.uploadsStart.partial),
       '  Blocs graphiques : '+(chunkUploads-p.uploadsStart.chunks),
       '  Transferts fusionnés/évités : '+(mergedUploads-p.uploadsStart.merged),
+      '  Mode de transfert : précis '+(uploadModes.precise-p.uploadsStart.modes.precise)+
+        ' · bandes 256 '+(uploadModes.bands256-p.uploadsStart.modes.bands256)+
+        ' · bandes 512 '+(uploadModes.bands512-p.uploadsStart.modes.bands512)+
+        ' · complet '+(uploadModes.full-p.uploadsStart.modes.full),
+      '  Nombre max de copies en un dessin : '+largestUploadBatch,
       '  Pixels téléversés (surface totale) : '+(uploadedPixels-p.uploadsStart.pixels),
       '  Équivalent de cartes entières téléversées : '+number(
         (uploadedPixels-p.uploadsStart.pixels)/(COLS*ROWS)),
@@ -2770,7 +2806,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({mergedUploads,mergedExtraPixels,uploadedPixels,chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered,coastCacheBuilds,coastVisibleSegments,coastTotalSegments:contourSegments,coalescedFrames}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+    window.__borderBlitzTest={getState:()=>({uploadModes:{...uploadModes},largestUploadBatch,mergedUploads,mergedExtraPixels,uploadedPixels,chunkUploads,chunkPixels,dirtyChunkCount:dirtyChunks.size,aiCursor,slots:ACTIVE_REALMS,aiSlots:ACTIVE_REALMS-1,contourSegments,terrainReady,resolutionScale:RES_SCALE,normalizedArea:AREA,coastSide,lakesCount:lakes.length,islandLayout,lobeCount:landLobes.length,mapSeed:worldSeed,landAreaCount:landAreas.length,autoSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered,coastCacheBuilds,coastVisibleSegments,coastTotalSegments:contourSegments,coalescedFrames}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
       diagnostics:()=>({active:!!perfSession,report:lastPerformanceReport,session:perfSession&&({fps:[...perfSession.frames],mapFps:[...perfSession.mapFrames],slow50:perfSession.slow50,draws:perfSession.visualSamples})}),detailedFillStyle,frontSpeed,availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   updateMenuOptions(true);
