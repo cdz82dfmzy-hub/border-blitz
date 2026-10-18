@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V4.0</title>
+  <title>Border Blitz — Prototype V4.0.1</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -226,7 +226,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V4.0 • MOTEUR WEBGL2</span></div><div class="top-buttons"><span id="fpsLive" class="fps-live" title="FPS navigateur / rafraîchissements de la carte" aria-live="off">FPS — / —</span><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Interrompre la partie et afficher le rapport FPS">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V4.0.1 • GPU 60 FPS</span></div><div class="top-buttons"><span id="fpsLive" class="fps-live" title="FPS navigateur / rafraîchissements de la carte" aria-live="off">FPS — / —</span><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Interrompre la partie et afficher le rapport FPS">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><button type="button" id="combatToggle" class="combat-toggle" aria-controls="combatPanel" aria-expanded="false" aria-label="Ouvrir les commandes de combat">⚔ 50 %</button><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -1994,7 +1994,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const dx=worldW/COLS,dy=worldH/ROWS;
     ctx.save();ctx.clearRect(0,0,mapW,mapH);
     if(gpuRenderer){
-      drawGpuFrame();
+      // requestAnimationFrame redessine le GPU une seule fois par image.
+      // Les événements militaires ne redessinent que les annotations 2D.
+      if(!running||paused)drawGpuFrame();
       detailedCellsRendered=0;
     }
     if(!gpuRenderer){
@@ -2767,6 +2769,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       '  Blocs graphiques Canvas 2D : '+(chunkUploads-p.uploadsStart.chunks),
       '  Actualisations de texture GPU : '+(gpuRenderer?.calls||0),
       '  Images rendues par GPU : '+gpuFrameCount,
+      '  Rendu GPU cadencé par requestAnimationFrame : '+(gpuRenderer?'oui':'n/a'),
       '  Transferts fusionnés/évités : '+(mergedUploads-p.uploadsStart.merged),
       '  Mode de transfert : précis '+(uploadModes.precise-p.uploadsStart.modes.precise)+
         ' · bandes 256 '+(uploadModes.bands256-p.uploadsStart.modes.bands256)+
