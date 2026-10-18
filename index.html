@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V2.9</title>
+  <title>Border Blitz — Prototype V3.0</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -151,6 +151,20 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 .menu-setting select{min-width:85px;max-width:57%;padding:9px 5px;background:#25445c;color:white;
  border:1px solid #628ba7;border-radius:8px;font-size:11px}
 .difficulty-info{font-size:10px;line-height:1.4;padding:5px 7px;color:#acd3e8;background:#142b41;border:1px solid #305773;border-radius:7px}
+.menu-map{display:flex;flex-direction:column;gap:7px;border-top:1px solid #33566f;padding-top:7px}
+.menu-map>select{width:100%;min-height:35px;padding:8px 9px;border-radius:9px;border:1px solid #6798ba;
+ background:#1f4763;color:#eef9ff;font-size:12px;font-weight:800}
+.seed-row{display:flex;align-items:center;gap:6px}
+.seed-row label{color:#c0daed;font-size:11px;letter-spacing:.08em;font-weight:800}
+.seed-row input{flex:1;min-width:0;height:34px;padding:6px 8px;font-size:13px;color:#f3fcff;
+ background:#0e283c;border:1px solid #547996;border-radius:7px}
+.seed-row button{width:38px;height:34px;border:1px solid #6798ba;background:#275471;border-radius:7px}
+.preview-button{height:34px;border-radius:8px;background:#1e435e;border:1px solid #6a9bb8;
+ color:#f2fbff;font-size:12px;font-weight:800}
+.map-preview{border:1px solid #5284a3;border-radius:10px;overflow:hidden;background:#082338}
+.map-preview[hidden]{display:none!important}
+.map-preview canvas{width:100%;height:auto;aspect-ratio:270/210;display:block}
+#previewCaption{text-align:center;padding:7px;color:#c3e3f5;font-size:11px;font-weight:800}
 .menu-info{text-align:center;padding:9px 5px;background:#1b405a;color:#c2e4f7;border:1px solid #356482;
  border-radius:9px;font-size:11px;font-weight:750}
 .menu-primary,.menu-secondary{height:45px;border-radius:10px;font-size:14px;font-weight:900}
@@ -167,7 +181,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V2.9 • GÉOGRAPHIE RÉALISTE</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V3.0 • CARTES PERSONNALISÉES</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -200,6 +214,30 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </div>
 <select id="mapMode" class="menu-native-select" aria-label="Mode de carte"><option value="small">1 à 10 joueurs</option><option value="50" selected>50 joueurs</option><option value="200">200 joueurs</option></select>
 <div class="menu-setting" id="smallOptions" hidden><label for="smallCount">Nombre de joueurs</label><select id="smallCount"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option></select></div>
+<div class="menu-map">
+ <div class="menu-label">TYPE DE CARTE</div>
+ <select id="mapPreset" aria-label="Choisir le style de carte">
+ <option value="random" selected>🎲 Aléatoire — tous les styles</option>
+ <option value="coast">Côtes sauvages</option>
+ <option value="fjord">Fjords et golfes</option>
+ <option value="peninsula">Péninsules</option>
+ <option value="archipelago">Royaume des îles</option>
+ <option value="halo">Halo — mer intérieure</option>
+ <option value="fracture">Terres fragmentées</option>
+ <option value="lakes">Plaine et lacs</option>
+ <option value="lagoon">Mers intérieures</option>
+ <option value="snow">Montagnes enneigées</option>
+ </select>
+ <div class="seed-row"><label for="mapSeed">SEED</label>
+  <input id="mapSeed" type="number" min="0" max="4294967295" step="1" inputmode="numeric" placeholder="Aléatoire"/>
+  <button type="button" id="randomSeed" aria-label="Nouvelle graine aléatoire">🎲</button>
+ </div>
+ <button type="button" id="previewMap" class="preview-button">Aperçu de la carte</button>
+ <div id="mapPreviewBox" class="map-preview" hidden>
+  <canvas id="mapPreview" width="270" height="210" aria-label="Aperçu du relief côtier"></canvas>
+  <div id="previewCaption">Aperçu</div>
+ </div>
+</div>
 <div class="menu-setting"><label for="matchDuration">Durée de la bataille</label><select id="matchDuration"><option value="auto" selected>Automatique</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="20">20 minutes</option></select></div>
 <div class="menu-setting"><label for="aiDifficulty">Difficulté des IA</label>
 <select id="aiDifficulty" aria-label="Niveau des adversaires"><option value="easy">Facile</option><option value="normal" selected>Normal</option><option value="hard">Difficile</option></select></div>
@@ -225,9 +263,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let worldSeed=0,worldKind='50',terrainFreq=[],terrainPhase=[],terrainAmp=[];
   let centerX=.5,centerY=.5,axisX=.37,axisY=.37,rotation=0;
   let geography='coast',bays=[],lakes=[],coastWarp=[0,0,0,0],mainlandCells=0;
-  const MAP_THEMES=['coast','fjord','peninsula','lakes','lagoon','archipelago'];
+  let terrainRelief=new Uint8Array(TOTAL),shoreDepth=new Uint8Array(TOTAL);
+  const MAP_THEMES=['coast','fjord','peninsula','lakes','lagoon','archipelago','halo','fracture','snow'];
   const MAP_NAMES={coast:'Côtes sauvages',fjord:'Fjords et golfes',peninsula:'Péninsules',
-    lakes:'Plaine des lacs',lagoon:'Mers intérieures',archipelago:'Archipel'};
+    lakes:'Plaine des lacs',lagoon:'Mers intérieures',archipelago:'Royaume des îles',
+    halo:'Halo — mer intérieure',fracture:'Terres fragmentées',snow:'Montagnes enneigées'};
   let islands=[],regions=new Int16Array(TOTAL),coast=new Uint8Array(TOTAL);
   let coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
   let ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
@@ -409,6 +449,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     aiLastEnemy=new Int16Array(ACTIVE_REALMS);aiLastAttack=new Float64Array(ACTIVE_REALMS);
     ACTIVE_SLOTS=Array.from({length:ACTIVE_REALMS},(_,i)=>i);
     islands=[];regions=new Int16Array(TOTAL);coast=new Uint8Array(TOTAL);
+    terrainRelief=new Uint8Array(TOTAL);shoreDepth=new Uint8Array(TOTAL);
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
     shipStats={launched:0,landed:0,ai:0,routed:0,rejected:0};seaNav=null;seaNavFine=null;seaZone=new Int16Array(TOTAL);
@@ -417,37 +458,46 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
     playerBounds=null;playerBoundsDirty=true;aliveCount=ACTIVE_REALMS;
     borderDirtyAll=true;borderDirty.clear();
-    worldSeed=(Math.random()*4294967296)>>>0;
+    const enteredSeed=String($('mapSeed').value).trim();
+    worldSeed=enteredSeed!==''?Math.max(0,Math.min(4294967295,Number(enteredSeed)||0))>>>0:
+      (Math.random()*4294967296)>>>0;
+    $('mapSeed').value=String(worldSeed);
     const random=seededRandom(worldSeed);
     terrainFreq=[2,3,5,7,11,17];
     terrainPhase=terrainFreq.map(()=>random()*Math.PI*2);
     terrainAmp=[.112,.079,.061,.045,.029,.014].map(x=>x*(.5+random()*1.1));
-    geography=MAP_THEMES[Math.floor(random()*MAP_THEMES.length)];
-    const wide=geography==='lakes'||geography==='lagoon';
+    const chosen=$('mapPreset').value;
+    geography=MAP_THEMES.includes(chosen)?chosen:MAP_THEMES[Math.floor(random()*MAP_THEMES.length)];
+    const wide=['lakes','lagoon','halo','fracture','snow'].includes(geography);
     centerX=.5+(random()-.5)*.05;centerY=.5+(random()-.5)*.05;
-    axisX=(wide?.475:.390)+(random()-.5)*(wide?.042:.10);
-    axisY=(wide?.466:.377)+(random()-.5)*(wide?.040:.09);
+    axisX=(wide?.464:.38)+(random()-.5)*(wide?.04:.12);
+    axisY=(wide?.457:.374)+(random()-.5)*(wide?.04:.11);
     rotation=(random()-.5)*1.6;
     coastWarp=[random()*6.283,random()*6.283,random()*6.283,random()*6.283];
     bays=[];
-    const ndent=geography==='fjord'?8:geography==='peninsula'?6:geography==='coast'?6:4;
+    const ndent=geography==='fjord'?12:geography==='fracture'?12:
+      geography==='peninsula'?8:geography==='archipelago'?10:geography==='coast'?7:5;
     for(let i=0;i<ndent;i++){
-      bays.push({angle:random()*6.283,spread:.07+random()*(geography==='fjord'?.16:.34),
-        depth:(geography==='fjord'?.13:.08)+random()*.17,
-        sign:random()<(geography==='peninsula'?.43:.25)?1:-1});
+      bays.push({angle:random()*6.283,
+        spread:.055+random()*(['fjord','fracture'].includes(geography)?.20:.35),
+        depth:(geography==='fjord'?.15:geography==='fracture'?.21:.085)+random()*.24,
+        sign:random()<(geography==='peninsula'?.42:.22)?1:-1});
     }
     lakes=[];
-    if(wide){
-      const n=geography==='lakes'?1+Math.floor(random()*3):1+Math.floor(random()*2);
+    if(['lakes','lagoon','halo'].includes(geography)){
+      const n=geography==='halo'?1:geography==='lakes'?2+Math.floor(random()*3):1+Math.floor(random()*3);
       for(let tries=0;tries<18&&lakes.length<n;tries++){
-        const px=.5+(random()-.5)*.24,py=.5+(random()-.5)*.21;
-        const rx=(geography==='lagoon'?.072:.061)+random()*(geography==='lagoon'?.042:.050);
-        const ry=(geography==='lagoon'?.069:.050)+random()*(geography==='lagoon'?.043:.040);
+        const px=geography==='halo'?centerX:.5+(random()-.5)*.27,
+              py=geography==='halo'?centerY:.5+(random()-.5)*.27;
+        const rx=geography==='halo'?axisX*(.40+random()*.12):
+                 (geography==='lagoon'?.095:.061)+random()*(geography==='lagoon'?.065:.050);
+        const ry=geography==='halo'?axisY*(.39+random()*.12):
+                 (geography==='lagoon'?.092:.055)+random()*(geography==='lagoon'?.060:.052);
         if(lakes.some(k=>Math.hypot((k.x-px)/(.6*rx+k.rx), (k.y-py)/(.6*ry+k.ry))<1.25))continue;
         lakes.push({x:px,y:py,rx,ry,rot:random()*3.14,phase:random()*6.283});
       }
     }
-    $('gameFooter').textContent='Carte : '+MAP_NAMES[geography]+' · '+ACTIVE_REALMS+' royaumes · '+(GAME_LENGTH/60)+' min';
+    $('gameFooter').textContent='Carte : '+MAP_NAMES[geography]+' · seed '+worldSeed+' · '+ACTIVE_REALMS+' royaumes · '+(GAME_LENGTH/60)+' min';
     $('boardTitle').textContent=ACTIVE_REALMS+' JOUEUR'+(ACTIVE_REALMS>1?'S':'')+' · #'+String(worldSeed%10000).padStart(4,'0');
     $('enemyLegend').textContent='🌈 '+(ACTIVE_REALMS-1)+' adversaire'+(ACTIVE_REALMS!==2?'s':'');
     $('gameFooter').textContent='Carte aléatoire • '+ACTIVE_REALMS+' joueurs • '+(GAME_LENGTH/60)+' min · IA '+AI_LEVELS[aiDifficulty].name;
@@ -458,11 +508,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function isLand(x,y){
     const dx=(x+.5)/COLS-centerX,dy=(y+.5)/ROWS-centerY;
     const cr=Math.cos(rotation),sr=Math.sin(rotation);
-    let px=(dx*cr-dy*sr)/axisX,py=(dx*sr+dy*cr)/axisY;
-    // La déformation spatiale donne des golfes et des promontoires qui ne sont
-    // plus seulement un cercle élastique. La côte conserve des détails à 3 échelles.
-    const wx=px+.045*Math.sin(py*9+coastWarp[0])+.020*Math.sin(py*23+coastWarp[1]);
-    const wy=py+.042*Math.sin(px*8+coastWarp[2])+.017*Math.cos(px*22+coastWarp[3]);
+    const px=(dx*cr-dy*sr)/axisX,py=(dx*sr+dy*cr)/axisY;
+    const wx=px+.055*Math.sin(py*7+coastWarp[0])+.025*Math.sin(py*17+coastWarp[1]);
+    const wy=py+.055*Math.sin(px*7+coastWarp[2])+.024*Math.cos(px*19+coastWarp[3]);
     const angle=Math.atan2(wy,wx);
     let limit=1;
     for(let j=0;j<terrainFreq.length;j++)
@@ -472,14 +520,16 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(delta>Math.PI)delta=2*Math.PI-delta;
       limit+=b.sign*b.depth*Math.exp(-.5*(delta/b.spread)**2);
     }
-    if(geography==='peninsula')limit+=.11*Math.sin(angle*2+coastWarp[0]);
+    if(geography==='peninsula')limit+=.14*Math.sin(angle*2+coastWarp[0]);
+    if(geography==='archipelago')limit+=.09*Math.cos(angle*4+coastWarp[3]);
+    if(geography==='fracture')limit+=.21*Math.sin(angle*3+coastWarp[2]);
     if(Math.hypot(wx,wy)>limit)return false;
     for(const lake of lakes){
       const lx=(x+.5)/COLS-lake.x,ly=(y+.5)/ROWS-lake.y;
       const cc=Math.cos(lake.rot),ss=Math.sin(lake.rot);
       const u=(lx*cc-ly*ss)/lake.rx,v=(lx*ss+ly*cc)/lake.ry;
       const theta=Math.atan2(v,u);
-      const shore=1+.15*Math.sin(3*theta+lake.phase)+.07*Math.cos(7*theta+lake.phase);
+      const shore=1+.17*Math.sin(3*theta+lake.phase)+.09*Math.cos(7*theta+lake.phase*1.5);
       if(u*u+v*v<shore*shore)return false;
     }
     return true;
@@ -495,7 +545,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const anchors=[[.07,.15],[.22,.075],[.51,.055],[.78,.07],[.93,.17],
       [.947,.43],[.94,.76],[.77,.94],[.52,.947],[.23,.93],[.06,.78],[.05,.47]];
     for(let i=anchors.length-1;i>0;i--){const j=Math.floor(rng()*(i+1)),v=anchors[i];anchors[i]=anchors[j];anchors[j]=v;}
-    const goal=geography==='archipelago'?ACTIVE_REALMS>=200?10:ACTIVE_REALMS>=50?8:5:
+    const goal=geography==='archipelago'?ACTIVE_REALMS>=200?12:ACTIVE_REALMS>=50?10:6:
+      geography==='fracture'?ACTIVE_REALMS>=200?11:7:
+      geography==='halo'?ACTIVE_REALMS>=200?8:5:
       geography==='lakes'?ACTIVE_REALMS>=200?5:3:
       ACTIVE_REALMS>=200?6:ACTIVE_REALMS>=50?4:3;
     const spots=[];
@@ -513,8 +565,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(islands.length>=goal)break;
       const cx=u*COLS,cy=v*ROWS;
       const lacustrian=lakes.some(lake=>Math.hypot((u-lake.x)/lake.rx,(v-lake.y)/lake.ry)<.55);
-      const rx=(lacustrian?.013:.016)+rng()*(lacustrian?.009:.017);
-      const ry=(lacustrian?.014:.018)+rng()*(lacustrian?.012:.017);
+      const broken=geography==='archipelago'||geography==='fracture';
+      const rx=(lacustrian?.013:broken?.022:.016)+rng()*(lacustrian?.009:broken?.030:.017);
+      const ry=(lacustrian?.014:broken?.022:.018)+rng()*(lacustrian?.012:broken?.029:.017);
       const rxPx=rx*COLS,ryPx=ry*ROWS;
       const phase=rng()*6.283,dir=rng()*6.283,cr=Math.cos(dir),sr=Math.sin(dir);
       const cells=[],x0=Math.max(2,Math.floor(cx-rxPx*1.45)),x1=Math.min(COLS-3,Math.ceil(cx+rxPx*1.45));
@@ -593,7 +646,74 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     }
     coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
     ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(islands.length+1));
+    buildTerrainDepth();
     buildSeaNavigation();
+  }
+
+  function terrainNoise(x,y,scale){
+    const px=x/scale,py=y/scale,ix=Math.floor(px),iy=Math.floor(py);
+    const u=px-ix,v=py-iy,fx=u*u*(3-2*u),fy=v*v*(3-2*v);
+    const hash=(a,b)=>{
+      let n=Math.imul(a,374761393)+Math.imul(b,668265263)+(worldSeed|0);
+      n=Math.imul(n^(n>>>13),1274126177);
+      return ((n^(n>>>16))>>>0)/4294967295;
+    };
+    const a=hash(ix,iy),b=hash(ix+1,iy),c=hash(ix,iy+1),d=hash(ix+1,iy+1);
+    return (a+(b-a)*fx)*(1-fy)+(c+(d-c)*fx)*fy;
+  }
+  function buildTerrainDepth(){
+    const depth=shoreDepth;depth.fill(40);
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const i=y*COLS+x,v=tiles[i];
+      if((x>0&&tiles[i-1]!==v&&(tiles[i-1]===WATER||v===WATER))||
+         (x<COLS-1&&tiles[i+1]!==v&&(tiles[i+1]===WATER||v===WATER))||
+         (y>0&&tiles[i-COLS]!==v&&(tiles[i-COLS]===WATER||v===WATER))||
+         (y<ROWS-1&&tiles[i+COLS]!==v&&(tiles[i+COLS]===WATER||v===WATER)))depth[i]=0;
+    }
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const i=y*COLS+x;
+      if(x>0&&tiles[i]===tiles[i-1])depth[i]=Math.min(depth[i],depth[i-1]+1);
+      if(y>0&&tiles[i]===tiles[i-COLS])depth[i]=Math.min(depth[i],depth[i-COLS]+1);
+    }
+    for(let y=ROWS-1;y>=0;y--)for(let x=COLS-1;x>=0;x--){
+      const i=y*COLS+x;
+      if(x<COLS-1&&tiles[i]===tiles[i+1])depth[i]=Math.min(depth[i],depth[i+1]+1);
+      if(y<ROWS-1&&tiles[i]===tiles[i+COLS])depth[i]=Math.min(depth[i],depth[i+COLS]+1);
+    }
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const i=y*COLS+x;
+      const macro=terrainNoise(x,y,Math.max(15,COLS*.10));
+      const detail=terrainNoise(x,y,Math.max(7,COLS*.026));
+      terrainRelief[i]=Math.round(255*(.62*macro+.38*detail));
+    }
+  }
+  function drawPreview(){
+    const canvas=$('mapPreview'),w=270,hh=210,context=canvas.getContext('2d');
+    canvas.width=w;canvas.height=hh;
+    const img=context.createImageData(w,hh),dest=img.data;
+    for(let py=0;py<hh;py++)for(let px=0;px<w;px++){
+      const x=Math.min(COLS-1,Math.floor(px*COLS/w)),y=Math.min(ROWS-1,Math.floor(py*ROWS/hh));
+      const id=index(x,y),depth=shoreDepth[id],noise=terrainRelief[id]/255,j=(py*w+px)*4;
+      let r,g,b;
+      if(tiles[id]===WATER){
+        const near=Math.max(0,1-depth/19);
+        r=13+24*near+noise*12;g=48+103*near+noise*14;b=82+114*near+noise*10;
+      }else{
+        const beach=Math.max(0,1-depth/12),mountain=Math.max(0,(noise-.49)*2);
+        if(geography==='snow'){r=152+100*mountain;g=167+83*mountain;b=182+72*mountain;}
+        else{r=29+55*mountain;g=115+72*noise-23*mountain;b=37+34*noise;}
+        r+=beach*136;g+=beach*89;b+=beach*77;
+      }
+      dest[j]=Math.min(255,r);dest[j+1]=Math.min(255,g);
+      dest[j+2]=Math.min(255,b);dest[j+3]=255;
+    }
+    context.putImageData(img,0,0);
+    $('previewCaption').textContent=MAP_NAMES[geography]+' · seed '+worldSeed+
+      ' · '+islands.length+' îlot'+(islands.length>1?'s':'');
+    $('mapPreviewBox').hidden=false;
+  }
+  function previewWorld(){
+    if(!$('mainMenu').hidden){configureWorld();generateTerrain();drawPreview();}
   }
   function buildSeaNavigation(){
     // Chaque masse d'eau est identifiée séparément : un bateau sur l'océan
@@ -1837,6 +1957,14 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   });
   $('smallCount').addEventListener('change',updateMenuOptions);
   $('matchDuration').addEventListener('change',updateMenuOptions);
+  $('mapPreset').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;});
+  $('mapMode').addEventListener('change',()=>{$('mapPreviewBox').hidden=true;});
+  $('randomSeed').addEventListener('click',()=>{
+    $('mapSeed').value=String((Math.random()*4294967296)>>>0);
+    $('mapPreviewBox').hidden=true;
+  });
+  $('mapSeed').addEventListener('input',()=>{$('mapPreviewBox').hidden=true;});
+  $('previewMap').addEventListener('click',previewWorld);
   $('aiDifficulty').addEventListener('change',updateMenuOptions);
   window.addEventListener('resize',()=>{if(!$('gameApp').hidden)resize();});
   window.addEventListener('pagehide',stopLoops);
@@ -1890,14 +2018,15 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     setCombatOpen(false);
     resetAI();
     $('result').classList.add('hidden');
-    message('<strong>Carte #'+(worldSeed%10000)+'</strong> · IA '+AI_LEVELS[aiDifficulty].name+' · '+ACTIVE_REALMS+' royaumes. Touchez plusieurs ennemis pour attaquer.');
+    message('<strong>'+MAP_NAMES[geography]+' · seed '+worldSeed+'</strong> · IA '+
+      AI_LEVELS[aiDifficulty].name+' · '+ACTIVE_REALMS+' royaumes. Touchez plusieurs ennemis pour attaquer.');
     $('mainMenu').hidden=true;$('gameApp').hidden=false;
     startLoops();resize();render();startCameraAnimation();
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
-      availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
+    window.__borderBlitzTest={getState:()=>({mapSeed:worldSeed,seaBasins:seaNav?new Set(seaZone.filter(v=>v>=0)).size:0,mapTheme:geography,mainlandCells,islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+      availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),shipAt,seaRoute,waterLine,seaZoneAt:(i)=>seaZone[i],preview:previewWorld,sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
   // Supprimer une ancienne sauvegarde V2.3 : aucune partie ne persiste désormais.
