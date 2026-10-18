@@ -1,4 +1,4 @@
-/* Border Blitz V4.0.2 — GPU territory renderer.
+/* Border Blitz V4.0.3 — compact GPU territory textures.
    WebGL2 layer for land/water/realm pixels; 2D canvas remains for labels and ships.
    World simulation and ownership remain authoritative in the game engine. */
 (function(global){
@@ -16,11 +16,12 @@ class BorderBlitzGpuRenderer {
     if(gl.getParameter(gl.MAX_TEXTURE_SIZE)<Math.max(cols,rows))throw new Error('Texture HD non prise en charge');
     this.calls=0;this.pixels=0;this.frames=0;this.skippedFrames=0;
     this.ready=true;this.hasFrame=false;this.dirty=false;
-    this.ownerPixels=new Uint8Array(cols*rows*4);
+    // Les 502 états (-2..499) tiennent en 16 bits : 2 octets par cellule.
+    this.ownerPixels=new Uint8Array(cols*rows*2);
     for(let i=0;i<tiles.length;i++)this.encode(i,tiles[i]);
-    const reliefPixels=new Uint8Array(cols*rows*4);
+    const reliefPixels=new Uint8Array(cols*rows*2);
     for(let i=0;i<tiles.length;i++){
-      const j=i*4;reliefPixels[j]=relief[i];reliefPixels[j+1]=depth[i];reliefPixels[j+3]=255;
+      const j=i*2;reliefPixels[j]=relief[i];reliefPixels[j+1]=depth[i];
     }
     const palette=new Uint8Array(512*4);
     for(let i=0;i<colors.length&&i<500;i++){
@@ -31,8 +32,8 @@ class BorderBlitzGpuRenderer {
     palette[0]=13;palette[1]=46;palette[2]=77;palette[3]=255;
     this.program=this.makeProgram();
     this.vao=gl.createVertexArray();gl.bindVertexArray(this.vao);
-    this.textureOwners=this.makeTexture(0,cols,rows,this.ownerPixels);
-    this.textureRelief=this.makeTexture(1,cols,rows,reliefPixels);
+    this.textureOwners=this.makeTexture(0,cols,rows,this.ownerPixels,true);
+    this.textureRelief=this.makeTexture(1,cols,rows,reliefPixels,true);
     this.texturePalette=this.makeTexture(2,512,1,palette);
     gl.useProgram(this.program);
     gl.uniform1i(gl.getUniformLocation(this.program,'uOwners'),0);
@@ -50,10 +51,10 @@ class BorderBlitzGpuRenderer {
     this.rowMin.fill(cols);this.rowMax.fill(-1);
   }
   encode(i,owner){
-    const v=owner+2,j=i*4;
-    this.ownerPixels[j]=v&255;this.ownerPixels[j+1]=v>>8;this.ownerPixels[j+2]=0;this.ownerPixels[j+3]=255;
+    const v=owner+2,j=i*2;
+    this.ownerPixels[j]=v&255;this.ownerPixels[j+1]=v>>8;
   }
-  makeTexture(unit,w,h,data){
+  makeTexture(unit,w,h,data,packed=false){
     const gl=this.gl,t=gl.createTexture();gl.activeTexture(gl.TEXTURE0+unit);
     gl.bindTexture(gl.TEXTURE_2D,t);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
@@ -61,7 +62,8 @@ class BorderBlitzGpuRenderer {
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
-    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,data);
+    gl.texImage2D(gl.TEXTURE_2D,0,packed?gl.RG8:gl.RGBA8,w,h,0,
+      packed?gl.RG:gl.RGBA,gl.UNSIGNED_BYTE,data);
     return t;
   }
   makeProgram(){
@@ -156,9 +158,9 @@ class BorderBlitzGpuRenderer {
     // Sélection au coût estimé : transferts de pixels + coût fixe des appels GL.
     // La copie complète reste un candidat : pas de surcoût catastrophique
     // lorsque 500 fronts couvrent presque toute la carte.
-    const callCost=4096;
+    const callCost=16384; // compromis : réduire les appels WebGL coûteux sur iPhone
     let best=null,bestCost=cols*rows+callCost;
-    for(const span of [1,16,64,256]){
+    for(const span of [1,16,64,256,512]){
       const rects=[];let area=0;
       for(let base=0;base<rows;base+=span){
         const end=Math.min(base+span,rows);
@@ -185,7 +187,7 @@ class BorderBlitzGpuRenderer {
       const x=r[0],y=r[1],w=r[2],h=r[3];
       gl.pixelStorei(gl.UNPACK_SKIP_PIXELS,x);
       gl.pixelStorei(gl.UNPACK_SKIP_ROWS,y);
-      gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RGBA,gl.UNSIGNED_BYTE,this.ownerPixels);
+      gl.texSubImage2D(gl.TEXTURE_2D,0,x,y,w,h,gl.RG,gl.UNSIGNED_BYTE,this.ownerPixels);
       this.calls++;this.pixels+=w*h;
     }
     gl.pixelStorei(gl.UNPACK_SKIP_PIXELS,0);
