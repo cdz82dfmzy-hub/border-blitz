@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#091322">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Border Blitz — Prototype V2.7</title>
+  <title>Border Blitz — Prototype V2.8</title>
   <style>
 :root{color-scheme:dark;--blue:#35a4f1;--muted:#a8c2d7}
 *{box-sizing:border-box}
@@ -167,7 +167,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
 </head>
 <body>
 <main class="app" id="gameApp" hidden>
-  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V2.7 • SOLDATS DISPONIBLES</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
+  <header class="headline"><div><div class="logo">BORDER <em>BLITZ</em></div><span class="version">V2.8 • ARCHIPELS</span></div><div class="top-buttons"><span class="hud-clock" id="clock">10:00</span><button class="outline" id="homeButton" type="button" aria-label="Sauvegarder et ouvrir le menu principal">☰</button></div></header>
   <section class="scoreboard" id="scoreboard" aria-label="Classement des royaumes"></section>
   <section class="board-card" aria-label="Plateau de jeu">
     <div class="board-head"><b id="boardTitle">50 JOUEURS</b><div class="map-tools" aria-label="Contrôles de carte"><button type="button" id="followCamera" aria-label="Recentrer sur mon royaume" title="Suivre le royaume">◎</button><button type="button" id="viewMap" aria-label="Afficher toute la carte" title="Vue générale">▦</button><button type="button" id="zoomOut" aria-label="Dézoomer" title="Dézoomer">−</button><output id="zoomLevel" aria-live="off">100 %</output><button type="button" id="zoomIn" aria-label="Zoomer" title="Zoomer">+</button></div></div>
@@ -223,6 +223,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   let GAME_LENGTH=600,WAVE_MS=80;
   const MAX_ARMY=6500,FRAGMENT_LIMIT=18;
   let worldSeed=0,worldKind='50',terrainFreq=[],terrainPhase=[],terrainAmp=[];
+  let centerX=.5,centerY=.5,axisX=.37,axisY=.37,rotation=0;
+  let islands=[],regions=new Int16Array(TOTAL),coast=new Uint8Array(TOTAL);
+  let coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
+  let ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
+  let shipStats={launched:0,landed:0,ai:0};
   const WATER=-2, NEUTRAL=-1;
   const $=id=>document.getElementById(id);
   const canvas=$('map'), ctx=canvas.getContext('2d');
@@ -398,6 +403,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     aiStyle=new Uint8Array(ACTIVE_REALMS);
     aiLastEnemy=new Int16Array(ACTIVE_REALMS);aiLastAttack=new Float64Array(ACTIVE_REALMS);
     ACTIVE_SLOTS=Array.from({length:ACTIVE_REALMS},(_,i)=>i);
+    islands=[];regions=new Int16Array(TOTAL);coast=new Uint8Array(TOTAL);
+    coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
+    ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(1));
+    shipStats={launched:0,landed:0,ai:0};
     layer.width=COLS;layer.height=ROWS;
     pixels=layerCtx.createImageData(COLS,ROWS);layerDirty=true;fullLayerDirty=true;
     dirtyX0=COLS;dirtyX1=-1;dirtyY0=ROWS;dirtyY1=-1;
@@ -407,7 +416,10 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     const random=seededRandom(worldSeed);
     terrainFreq=[2,3,5,7,11,17];
     terrainPhase=terrainFreq.map(()=>random()*Math.PI*2);
-    terrainAmp=[.08,.066,.047,.032,.024,.013].map(x=>x*(.55+random()*.90));
+    terrainAmp=[.112,.079,.061,.045,.029,.014].map(x=>x*(.5+random()*1.1));
+    centerX=.5+(random()-.5)*.035;centerY=.5+(random()-.5)*.03;
+    axisX=.367+(random()-.5)*.040;axisY=.362+(random()-.5)*.038;
+    rotation=(random()-.5)*1.15;
     $('boardTitle').textContent=ACTIVE_REALMS+' JOUEUR'+(ACTIVE_REALMS>1?'S':'')+' · #'+String(worldSeed%10000).padStart(4,'0');
     $('enemyLegend').textContent='🌈 '+(ACTIVE_REALMS-1)+' adversaire'+(ACTIVE_REALMS!==2?'s':'');
     $('gameFooter').textContent='Carte aléatoire • '+ACTIVE_REALMS+' joueurs • '+(GAME_LENGTH/60)+' min · IA '+AI_LEVELS[aiDifficulty].name;
@@ -416,27 +428,71 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   // Profil côtier harmonique déterministe. Tous les points terrestres appartiennent
   // à un seul continent : pas de serveur, pas de génération aléatoire en cours de partie.
   function isLand(x,y){
-    const dx=(x+.5)/COLS-.5,dy=(y+.5)/ROWS-.5;
-    const angle=Math.atan2(dy/.416,dx/.421),r=Math.hypot(dx/.421,dy/.416);
-    let limit=.94;
-    for(let j=0;j<terrainFreq.length;j++)limit+=terrainAmp[j]*Math.sin(terrainFreq[j]*angle+terrainPhase[j]);
-    return r<=limit;
+    const dx=(x+.5)/COLS-centerX,dy=(y+.5)/ROWS-centerY;
+    const cr=Math.cos(rotation),sr=Math.sin(rotation);
+    const px=(dx*cr-dy*sr)/axisX,py=(dx*sr+dy*cr)/axisY;
+    const angle=Math.atan2(py,px);
+    let limit=1;
+    for(let j=0;j<terrainFreq.length;j++)
+      limit+=terrainAmp[j]*Math.sin(terrainFreq[j]*angle+terrainPhase[j]);
+    return Math.hypot(px,py)<=limit;
   }
   function generateTerrain(){
-    tiles.fill(WATER);totalLand=0;
+    tiles.fill(WATER);regions.fill(-1);islands=[];totalLand=0;
     for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
       const i=index(x,y);
-      if(isLand(x,y)){tiles[i]=NEUTRAL;totalLand++;}
-      setPixel(i,tiles[i]);
+      if(isLand(x,y)){tiles[i]=NEUTRAL;regions[i]=0;totalLand++;}
     }
-    coastPath=new Path2D();
+    // Îles de taille variable, le long du bord maritime, avec mer tampon.
+    const rng=seededRandom((worldSeed^0x59dd421f)>>>0);
+    const anchors=[[.07,.16],[.24,.065],[.5,.052],[.77,.065],[.93,.20],
+      [.946,.49],[.93,.80],[.76,.939],[.5,.948],[.23,.939],[.07,.79],[.053,.47]];
+    for(let k=anchors.length-1;k>0;k--){
+      const j=Math.floor(rng()*(k+1)),tmp=anchors[k];anchors[k]=anchors[j];anchors[j]=tmp;
+    }
+    const wanted=ACTIVE_REALMS<=10?2+Math.floor(rng()*2):
+      ACTIVE_REALMS<=50?3+Math.floor(rng()*3):5+Math.floor(rng()*3);
+    for(const [ax,ay] of anchors){
+      if(islands.length>=wanted)break;
+      const cx=(ax+(rng()-.5)*.020)*COLS,cy=(ay+(rng()-.5)*.020)*ROWS;
+      const rx=(.019+rng()*.011)*COLS,ry=(.020+rng()*.012)*ROWS;
+      const phase=rng()*6.283,dir=rng()*6.283,cr=Math.cos(dir),sr=Math.sin(dir);
+      const cells=[];
+      const x0=Math.max(1,Math.floor(cx-rx*1.3)),x1=Math.min(COLS-2,Math.ceil(cx+rx*1.3));
+      const y0=Math.max(1,Math.floor(cy-ry*1.3)),y1=Math.min(ROWS-2,Math.ceil(cy+ry*1.3));
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+        const dx=x+.5-cx,dy=y+.5-cy,px=(dx*cr-dy*sr)/rx,py=(dx*sr+dy*cr)/ry;
+        const a=Math.atan2(py,px),limit=1+.14*Math.sin(3*a+phase)+.08*Math.cos(5*a+phase);
+        if(px*px+py*py<limit*limit)cells.push(index(x,y));
+      }
+      if(cells.length<25)continue;
+      let ok=true;
+      for(const i of cells){
+        const x=i%COLS,y=i/COLS|0;
+        for(let oy=-4;oy<=4&&ok;oy++)for(let ox=-4;ox<=4;ox++){
+          const nx=x+ox,ny=y+oy;
+          if(nx<0||ny<0||nx>=COLS||ny>=ROWS||tiles[index(nx,ny)]!==WATER){ok=false;break;}
+        }
+        if(!ok)break;
+      }
+      if(!ok)continue;
+      const id=islands.length+1;
+      for(const i of cells){tiles[i]=NEUTRAL;regions[i]=id;totalLand++;}
+      islands.push({id,cells:cells.length,beaches:[],center:[cx,cy]});
+    }
+    coastPath=new Path2D();coast.fill(0);
     for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-      const i=index(x,y);if(tiles[i]===WATER)continue;
-      if(x===0||tiles[i-1]===WATER){coastPath.moveTo(x,y);coastPath.lineTo(x,y+1);}
-      if(x===COLS-1||tiles[i+1]===WATER){coastPath.moveTo(x+1,y);coastPath.lineTo(x+1,y+1);}
-      if(y===0||tiles[i-COLS]===WATER){coastPath.moveTo(x,y);coastPath.lineTo(x+1,y);}
-      if(y===ROWS-1||tiles[i+COLS]===WATER){coastPath.moveTo(x,y+1);coastPath.lineTo(x+1,y+1);}
+      const i=index(x,y);setPixel(i,tiles[i]);
+      if(tiles[i]===WATER)continue;
+      let shoreline=false;
+      if(x===0||tiles[i-1]===WATER){coastPath.moveTo(x,y);coastPath.lineTo(x,y+1);shoreline=true;}
+      if(x===COLS-1||tiles[i+1]===WATER){coastPath.moveTo(x+1,y);coastPath.lineTo(x+1,y+1);shoreline=true;}
+      if(y===0||tiles[i-COLS]===WATER){coastPath.moveTo(x,y);coastPath.lineTo(x+1,y);shoreline=true;}
+      if(y===ROWS-1||tiles[i+COLS]===WATER){coastPath.moveTo(x,y+1);coastPath.lineTo(x+1,y+1);shoreline=true;}
+      if(shoreline){coast[i]=1;if(regions[i]>0)islands[regions[i]-1].beaches.push(i);}
     }
+    coastOwners=Array.from({length:ACTIVE_REALMS},()=>new Set());
+    ownRegions=Array.from({length:ACTIVE_REALMS},()=>new Uint32Array(islands.length+1));
   }
   function uploadDirtyPixels(){
     if(!layerDirty)return;
@@ -471,8 +527,9 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       territoryCounts[prev]--;sumsX[prev]-=x+.5;sumsY[prev]-=y+.5;
       if(territoryCounts[prev]===0)aliveCount--;
     }
+    if(prev>=0){ownRegions[prev][regions[i]]--;if(coast[i])coastOwners[prev].delete(i);}
     tiles[i]=next;
-    if(next>=0){
+    if(next>=0){ownRegions[next][regions[i]]++;if(coast[i])coastOwners[next].add(i);
       if(territoryCounts[next]===0)aliveCount++;
       territoryCounts[next]++;sumsX[next]+=x+.5;sumsY[next]+=y+.5;
     }
@@ -559,7 +616,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function chooseSpawns(){
     const candidates=[],step=ACTIVE_REALMS<=10?8:ACTIVE_REALMS<=50?14:18,margin=ACTIVE_REALMS<=10?10:ACTIVE_REALMS<=50?12:10;
     for(let y=margin;y<ROWS-margin;y+=step)for(let x=margin;x<COLS-margin;x+=step){
-      if(tiles[index(x,y)]!==NEUTRAL)continue;
+      if(tiles[index(x,y)]!==NEUTRAL||regions[index(x,y)]!==0)continue;
       if(!isLand(x-margin,y)||!isLand(x+margin,y)||!isLand(x,y-margin)||!isLand(x,y+margin))continue;
       candidates.push([x,y]);
     }
@@ -604,6 +661,12 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
         }
     }
     rebuildFrontiers();borderDirtyAll=true;borderDirty.clear();
+    for(const owned of coastOwners)owned.clear();
+    for(const amounts of ownRegions)amounts.fill(0);
+    for(let i=0;i<TOTAL;i++){
+      const p=tiles[i];if(p>=0){ownRegions[p][regions[i]]++;
+        if(coast[i])coastOwners[p].add(i);}
+    }
     playerBounds=null;playerBoundsDirty=true;aliveCount=territoryCounts.filter(v=>v>0).length;
   }
 
@@ -623,7 +686,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     let total=0;for(const c of playerCampaigns)total+=Math.max(0,c.budget);
     return total;
   }
-  function playerFrontName(c){return c.aimOwner<0?'Terres libres':'IA '+(c.aimOwner+1);}
+  function playerFrontName(c){return c.island>0?'Îlot '+c.island+(c.naval?' ⛵':''):c.aimOwner<0?'Terres libres':'IA '+(c.aimOwner+1);}
   function closePlayerCampaign(c){
     const index=playerCampaigns.indexOf(c);if(index<0)return null;
     const report=settlement(c);
@@ -637,13 +700,75 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(!c)return null;
     const r=closePlayerCampaign(c);render();return r;
   }
+
+  function requiresShip(owner,target){
+    const island=regions[target];return island>0&&ownRegions[owner][island]===0;
+  }
+  function prepareShip(owner,target,pct){
+    if(!requiresShip(owner,target))return false;
+    const island=islands[regions[target]-1],coastal=coastOwners[owner];
+    if(!coastal.size){if(owner===0)message('⛵ Il faut atteindre la côte avant d’embarquer.');return false;}
+    let landing=-1,best=Infinity;
+    const tx=target%COLS,ty=target/COLS|0;
+    for(const i of island.beaches){
+      if(tiles[i]===owner)continue;
+      const dx=i%COLS-tx,dy=(i/COLS|0)-ty;
+      const score=dx*dx+dy*dy+(tiles[i]!==tiles[target]?400:0);
+      if(score<best){best=score;landing=i;}
+    }
+    if(landing<0)return false;
+    const lx=landing%COLS,ly=landing/COLS|0;
+    let origin=-1;best=Infinity;
+    for(const i of coastal){
+      const dx=i%COLS-lx,dy=(i/COLS|0)-ly,dist=dx*dx+dy*dy;
+      if(dist<best){best=dist;origin=i;}
+    }
+    if(origin<0)return false;
+    const committed=maximumCommit(owner,pct),distance=Math.sqrt(best);
+    const passage=Math.max(2,Math.min(14,2+distance*.012));
+    if(committed<8||committed<passage+2){if(owner===0)message('⛵ Pas assez de soldats pour cette traversée.');return false;}
+    const waves=Math.ceil(Math.min(7000,1800+distance*6)/WAVE_MS);
+    armies[owner]-=committed;
+    const aim=tiles[target];
+    const campaign={budget:committed-passage,initial:committed,aimOwner:aim,
+      captured:0,wait:0,cursor:0,neutralSpent:passage,enemySpent:0,
+      naval:true,island:island.id,origin,landing,travel:waves,travelTotal:waves};
+    if(owner===0){
+      playerCampaigns.push(campaign);lastBattleReport=null;
+      message('<strong>⛵ Traversée vers îlot '+island.id+'</strong> · arrivée dans '+Math.ceil(waves*WAVE_MS/1000)+' s.');
+      render();
+    }else{campaigns[owner]=campaign;shipStats.ai++;}
+    shipStats.launched++;return true;
+  }
+  function disembark(owner,c){
+    const tile=c.landing;if(tile<0||regions[tile]!==c.island||tiles[tile]===WATER)return false;
+    if(tiles[tile]!==owner){
+      const cost=costs(owner,tile);
+      if(c.budget<cost+2/AREA)return false;
+      const prior=tiles[tile];
+      c.budget-=cost;
+      if(prior===NEUTRAL)c.neutralSpent+=cost;
+      else{c.enemySpent+=cost;sufferDefenseLoss(prior,Math.max(1/AREA,cost*.65));}
+      if(!changeTile(tile,owner))return false;
+      c.captured++;capturesSinceCleanup++;
+      if(prior>=0&&!count(prior)){endCampaign(prior);armies[prior]=0;}
+    }
+    c.naval=false;shipStats.landed++;
+    if(owner===0)message('<strong>⛵ Débarquement effectué.</strong> Votre front avance sur l’île.');
+    return true;
+  }
   function startPlayerCampaign(target,pct){
     const focus=tiles[target],aimOwner=focus===0?NEUTRAL:focus;
-    if(aimOwner===NEUTRAL&&!frontier(0).some(i=>tiles[i]===NEUTRAL)){
+    if(aimOwner===NEUTRAL&&!requiresShip(0,target)&&!frontier(0).some(i=>tiles[i]===NEUTRAL)){
       message('Aucune terre neutre accessible : sélectionnez un ennemi.');return false;
     }
     if(aimOwner>=0&&!count(aimOwner))return false;
-    let c=playerCampaigns.find(c=>c.aimOwner===aimOwner);
+    const island=regions[target];
+    let c=playerCampaigns.find(c=>c.aimOwner===aimOwner&&c.island===(island>0?island:undefined));
+    if(requiresShip(0,target)&&!c){
+      if(playerCampaigns.length>=MAX_PLAYER_FRONTS)return false;
+      return prepareShip(0,target,pct);
+    }
     if(!c&&playerCampaigns.length>=MAX_PLAYER_FRONTS){
       message('Maximum '+MAX_PLAYER_FRONTS+' offensives : arrêtez un front pour en ouvrir un autre.');return false;
     }
@@ -700,7 +825,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     $('warLabel').innerHTML='<strong>⚔ '+n+' front'+(n>1?'s':'')+'</strong> '+fmtTroops(remaining)+
       ' engagés · '+fmtTroops(sent-remaining)+' consommés';
     $('campaignList').innerHTML=playerCampaigns.map(c=>
-      '<div class="campaign-item"><strong>'+playerFrontName(c)+'</strong><span>'+fmtTroops(c.budget)+'</span>'+
+      '<div class="campaign-item"><strong>'+playerFrontName(c)+'</strong><span>'+(c.naval?'⛵ '+Math.ceil(c.travel*WAVE_MS/1000)+' s':fmtTroops(c.budget))+'</span>'+
       '<button type="button" data-front="'+c.aimOwner+'" aria-label="Arrêter '+playerFrontName(c)+'" title="Arrêter ce front">×</button></div>'
     ).join('');
   }
@@ -884,6 +1009,23 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       ctx.fillRect(x-dx*.5,y-dy*.5,dx,dy);
     }
     ctx.globalAlpha=1;
+    for(let owner=0;owner<ACTIVE_REALMS;owner++){
+      const list=owner===0?playerCampaigns:campaigns[owner]?[campaigns[owner]]:[];
+      for(const c of list){
+        if(!c.naval)continue;
+        const p=1-c.travel/Math.max(1,c.travelTotal);
+        const x=((c.origin%COLS+.5)*(1-p)+(c.landing%COLS+.5)*p)*dx;
+        const y=(((c.origin/COLS|0)+.5)*(1-p)+((c.landing/COLS|0)+.5)*p)*dy;
+        const px=x*zoom+offsetX,py=y*zoom+offsetY;
+        if(px<-20||px>mapW+20||py<-20||py>mapH+20)continue;
+        const a=8/zoom;
+        ctx.beginPath();ctx.moveTo(x-a,y);ctx.lineTo(x+a,y);
+        ctx.lineTo(x+a*.5,y+a*.5);ctx.lineTo(x-a*.5,y+a*.5);ctx.closePath();
+        ctx.fillStyle=owner===0?'#e5fbff':'#ffdf9c';ctx.fill();
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-a);
+        ctx.lineTo(x+a*.65,y-a*.2);ctx.closePath();ctx.fill();
+      }
+    }
     // Priorité au joueur, puis aux territoires les plus lisibles.
     // Les étiquettes montrent uniquement la réserve immédiatement mobilisable.
     // Les unités engagées ne réapparaissent qu'au retour d'une offensive.
@@ -958,6 +1100,7 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
     if(focus===WATER){if(owner===0)message('Mer infranchissable : choisissez une zone terrestre.');return false;}
     if(owner===0)return startPlayerCampaign(target,pct);
     const aimOwner=focus===owner?NEUTRAL:focus;
+    if(requiresShip(owner,target))return prepareShip(owner,target,pct);
     if(aimOwner===NEUTRAL&&!frontier(owner).some(i=>tiles[i]===NEUTRAL))return false;
     if(aimOwner>=0&&!count(aimOwner))return false;
     endCampaign(owner);
@@ -996,11 +1139,11 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   function selectWave(owner,c){
     const edge=frontier(owner);if(!edge.length)return [];
     let eligible;
-    if(c.aimOwner===NEUTRAL)eligible=edge.filter(i=>tiles[i]===NEUTRAL);
+    if(c.aimOwner===NEUTRAL)eligible=edge.filter(i=>tiles[i]===NEUTRAL&&(!c.island||regions[i]===c.island));
     else{
-      eligible=edge.filter(i=>tiles[i]===c.aimOwner);
+      eligible=edge.filter(i=>tiles[i]===c.aimOwner&&(!c.island||regions[i]===c.island));
       if(!eligible.length){
-        eligible=edge.filter(i=>tiles[i]===NEUTRAL);
+        eligible=edge.filter(i=>tiles[i]===NEUTRAL&&(!c.island||regions[i]===c.island));
         if(eligible.length&&count(c.aimOwner)>0){
           const px=sumsX[c.aimOwner]/count(c.aimOwner),py=sumsY[c.aimOwner]/count(c.aimOwner);
           eligible.sort((a,b)=>{
@@ -1025,6 +1168,12 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   function wave(owner,c=campaigns[owner]){
     if(!c||!running)return;
+    if(c.naval){
+      if(!count(owner)){if(owner===0)closePlayerCampaign(c);else endCampaign(owner);return;}
+      if(--c.travel>0)return;
+      if(!disembark(owner,c)){if(owner===0)closePlayerCampaign(c);else endCampaign(owner);}
+      return;
+    }
     if(!count(owner)||(c.aimOwner>=0&&!count(c.aimOwner))){
       if(owner===0)closePlayerCampaign(c);else endCampaign(owner);
       return;
@@ -1160,6 +1309,21 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
       if(success)aiStats.expansions++;
       return success;
     };
+    const shipChance=aiDifficulty==='hard'?.18:aiDifficulty==='normal'?.11:.07;
+    if(islands.length&&coastOwners[owner].size&&Math.random()<shipChance){
+      const first=Math.floor(Math.random()*islands.length);
+      for(let k=0;k<islands.length;k++){
+        const island=islands[(first+k)%islands.length];
+        if(ownRegions[owner][island.id])continue;
+        for(let t=0;t<Math.min(5,island.beaches.length);t++){
+          const b=island.beaches[Math.floor(Math.random()*island.beaches.length)];
+          if(tiles[b]!==NEUTRAL)continue;
+          if(prepareShip(owner,b,35+Math.floor(Math.random()*22))){
+            aiStats.expansions++;return true;
+          }
+        }
+      }
+    }
     if(neutrals.length&&(elapsed<p.opening||Math.random()<preferNeutral))return sendNeutral();
 
     const own=fightingStrength(owner),ownArea=count(owner),choices=[],availablePlayerSlots=
@@ -1416,8 +1580,8 @@ button,select,input{font:inherit}button{border:0;color:inherit;cursor:pointer;to
   }
   // Inspection limitée au test local. Jamais activée sur le site public.
   if(location.protocol==='file:'||location.protocol==='about:'||location.hostname==='localhost'){
-    window.__borderBlitzTest={getState:()=>({difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
-      availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
+    window.__borderBlitzTest={getState:()=>({islands:islands.map(a=>({id:a.id,cells:a.cells,beaches:a.beaches.length})),regionMap:[...regions],coastCount:coastOwners.map(x=>x.size),shipStats:{...shipStats},difficulty:aiDifficulty,paused,menuVisible:!$('mainMenu').hidden,seed:worldSeed,kind:worldKind,tiles:[...tiles],counts:[...territoryCounts],lastBattleReport:lastBattleReport&&({...lastBattleReport}),size:[COLS,ROWS],screen:[mapW,mapH],worldSize:[worldW,worldH],spawnSlots:SPAWN_SLOTS,activeRealms:ACTIVE_REALMS,panelOpen:!$('combatPanel').hidden,perf:()=>({fullUploads,partialUploads,boundsScans,aliveCount,detailedCellsRendered}),autoFollow,cameraTarget:cameraTarget&&({...cameraTarget}),visibleLabels:labelsDrawn,visibleMarkers:markersDrawn,activeSlots:ACTIVE_SLOTS,capitalTiles:[...capitals],landCells:totalLand,waterCells:TOTAL-totalLand,frontierSizes:frontiers.map(f=>f.size),zoom,offsetX,offsetY,armies:[...armies],campaigns:campaigns.map(c=>c&&({...c})),playerCampaigns:playerCampaigns.map(c=>({...c})),percent,timeLeft,running}),
+      availableTroops:(owner)=>armies[owner],troopLabel:(owner)=>fmtTroops(armies[owner]),sendShip:prepareShip,requiresShip,regionAt:(i)=>regions[i],newGame:create,menu:showMainMenu,setZoom,maxZoom:()=>MAX_ZOOM,autoZoomCap:()=>MAX_AUTO_ZOOM,touch:(owner,x,y,pct=50)=>startCampaign(owner,index(x,y),pct),stopTarget:stopPlayerTarget,committed:playerCommitted,step:tickWaves,tick,bot,aiScheduler,attackers:ongoingAttacksOnPlayer,aiState:()=>({difficulty:aiDifficulty,stats:{...aiStats},profile:{...AI_LEVELS[aiDifficulty]},seconds:aiSeconds,aggression:[...aiAggression],style:[...aiStyle],next:[...aiNextDecision],lastAttackOnPlayer}),troops:fightingStrength,setCombatOpen,hit:gridAt,updateCamera:followPlayer,cameraStep,draw,edgeAt:outlineAt,pixel:(i)=>Array.from(pixels.data.slice(i*4,i*4+4)),formatTroops:fmtTroops,costs,sufferDefenseLoss,territoryLabel,finishLastPockets,production:prod,capacity:armyCapacity,settlement,stop:endCampaign,cleanup:cleanupFragments,verify:verifyCounts,change:changeTile,finish,follow:resumeFollow,overview:viewWholeMap};
   }
   $('smallOptions').hidden=$('mapMode').value!=='small';
   // Supprimer une ancienne sauvegarde V2.3 : aucune partie ne persiste désormais.
