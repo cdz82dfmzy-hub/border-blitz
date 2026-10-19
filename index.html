@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#071823"><title>BORDER BLITZ V6.0 — Fronts vivants</title>
+<meta name="theme-color" content="#071823"><title>BORDER BLITZ V6.1 — Fronts vivants</title>
 <meta name="description" content="50 régions et 10 royaumes : transfère des armées entre provinces, combats en temps réel et bâtiments locaux.">
 <style>:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;--bg:#071823;--panel:#102b39;--border:#305668;--ink:#f2f9fc;--mute:#a9c3d2;--aqua:#78e0e9}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink)}body{overscroll-behavior-y:none}
@@ -15,16 +15,24 @@ button,select,input{font:inherit}button{border:1px solid #39667a;border-radius:1
 #end{position:fixed;inset:0;background:#04121ddd;display:grid;place-items:center;z-index:3;padding:20px}#end .card{max-width:380px;width:100%;text-align:center}#end h2{font-size:30px}#end button{width:100%;margin-top:8px}
 @media(max-width:850px){.menuGrid,.layout{grid-template-columns:1fr}.aside{grid-template-columns:1fr 1fr}#map{height:55dvh}}
 @media(max-width:600px){#menu{padding:14px}.hero{margin:20px 0}.hero h1{font-size:39px}.hero p{font-size:13px}.card{padding:15px}.aside{grid-template-columns:1fr}.stats{padding:7px;gap:5px}.stat{padding:8px 6px}.stat small{font-size:9px}.stat b{font-size:16px}.layout{padding:0 7px 24px;gap:9px}#map{height:48dvh;min-height:290px;max-height:460px}.panel{padding:13px}.top .brand b{font-size:14px}}
+ .difficultyHint{margin:7px 0 4px;font-size:11px;line-height:1.45;color:#9fc7d4}
 </style></head>
 <body>
 <section id="menu"><div class="container">
-<header class="brand"><div class="emblem">◇</div><div><b>BORDER BLITZ</b><small>LA GUERRE DES RÉGIONS · V6.0</small></div></header>
+<header class="brand"><div class="emblem">◇</div><div><b>BORDER BLITZ</b><small>LA GUERRE DES RÉGIONS · V6.1</small></div></header>
 <div class="hero"><span class="eyebrow">Conquérir · Renforcer · Construire</span><h1>Des armées vivantes.<br>Des territoires à défendre.</h1>
 <p>Inspiré de Mushroom Wars, mais avec de véritables provinces de tailles et formes variées. Fais glisser ton doigt entre deux régions : les escouades traversent la carte pour attaquer ou renforcer les alliés.</p></div>
 <div class="menuGrid">
 <div class="card"><h2>Nouvelle partie</h2><p class="muted">Jusqu’à 50 régions, avec au maximum 10 royaumes sur la carte.</p>
 <label class="field"><span>Régions</span><select id="zones"><option value="15">15 régions</option><option value="25">25 régions</option><option value="35" selected>35 régions</option><option value="50">50 régions</option></select></label>
 <label class="field"><span>Royaumes</span><select id="players"><option value="2">2 royaumes</option><option value="4">4 royaumes</option><option value="6" selected>6 royaumes</option><option value="8">8 royaumes</option><option value="10">10 royaumes</option></select></label>
+<label class="field"><span>Difficulté des IA</span>
+<select id="difficulty" aria-label="Difficulté des adversaires">
+<option value="easy">Facile · découverte</option>
+<option value="normal" selected>Moyen · équilibré</option>
+<option value="hard">Difficile · agressif</option>
+</select></label>
+<p class="difficultyHint" id="difficultyHint">Moyen : les IA attaquent régulièrement, mais gardent davantage de soldats en défense.</p>
 <label class="field"><span>Durée</span><select id="duration"><option value="360">6 minutes</option><option value="600" selected>10 minutes</option><option value="900">15 minutes</option></select></label>
 <label class="field"><span>Seed</span><input id="seed" type="number" inputmode="numeric" placeholder="Aléatoire" min="0" max="4294967295"></label>
 <button class="primary start" id="start">⚔ Commencer la conquête</button></div>
@@ -36,7 +44,7 @@ button,select,input{font:inherit}button{border:1px solid #39667a;border-radius:1
 <p class="muted">Anciennes versions : <a href="./v5.html">V5.0</a> · <a href="./legacy.html">V4.2 classique</a></p>
 </div></section>
 <section id="game" hidden>
-<header class="top"><div class="brand"><div class="emblem">◇</div><div><b>BORDER BLITZ</b><small>FRONTS VIVANTS · V6.0</small></div></div><button id="home">☰ Menu</button></header>
+<header class="top"><div class="brand"><div class="emblem">◇</div><div><b>BORDER BLITZ</b><small>FRONTS VIVANTS · V6.1</small></div></div><button id="home">☰ Menu</button></header>
 <div class="stats">
 <div class="stat"><small>Soldats totaux</small><b id="points">0</b></div><div class="stat"><small>Production</small><b id="income">0</b></div>
 <div class="stat"><small>Régions</small><b id="zonesOwned">0</b></div><div class="stat"><small>Temps</small><b id="timer">10:00</b></div>
@@ -52,7 +60,7 @@ button,select,input{font:inherit}button{border:1px solid #39667a;border-radius:1
 </aside></div></section>
 <section id="end" hidden><div class="card"><span class="eyebrow">Partie terminée</span><h2 id="endTitle">Résultat</h2><p id="endDesc"></p>
 <button class="primary" id="replay">Nouvelle partie</button><button id="back">Retour au menu</button></div></section>
-<script src="./zones-engine.js?v=6.0.0"></script><script>(()=>{
+<script src="./zones-engine.js?v=6.1.0"></script><script>(()=>{
 'use strict';
 const $=id=>document.getElementById(id);
 const Core=window.BorderBlitzZoneCore;
@@ -67,12 +75,14 @@ function init(){
  cancelAnimationFrame(frame);
  const text=$('seed').value.trim(),seed=text===''?(Math.random()*4294967296)>>>0:Number(text)>>>0;
  $('seed').value=String(seed);
- try{game=new ZoneGame({zones:+$('zones').value,players:+$('players').value,duration:+$('duration').value,seed});}
+ try{game=new ZoneGame({zones:+$('zones').value,players:+$('players').value,
+ difficulty:$('difficulty').value,duration:+$('duration').value,seed});}
  catch(error){window.alert('Erreur lors de la création du monde : '+error.message);return;}
  selection=game.owned(0)[0]?.id??-1;awaiting=-1;percentage=75;zoom=1;pan={x:0,y:0};
  gesture=null;pinch=null;pointers.clear();zoneSignature='';
  $('menu').hidden=true;$('game').hidden=false;$('end').hidden=true;
- $('mapTitle').textContent=game.zoneCount+' régions · '+game.playerCount+' royaumes · seed '+seed;
+ $('mapTitle').textContent=game.zoneCount+' régions · '+game.playerCount+' royaumes · '+
+ game.aiPreset.label+' · seed '+seed;
  last=lastUi=lastFps=fpsFrames=0;
  resize();updateUI(true);frame=requestAnimationFrame(loop);
 }
@@ -313,6 +323,14 @@ function loop(now){
  if(active&&!game.active){updateUI(true);end();}
  if(game.active)frame=requestAnimationFrame(loop);else frame=0;
 }
+const difficultyDescriptions={
+ easy:'Facile : les IA se développent tranquillement, envoient de plus petites armées et attaquent rarement les autres royaumes.',
+ normal:'Moyen : les IA attaquent régulièrement, mais gardent davantage de soldats en défense.',
+ hard:'Difficile : IA originale de la V6.1, très offensive et rapide.'
+};
+$('difficulty').addEventListener('change',()=>{
+ $('difficultyHint').textContent=difficultyDescriptions[$('difficulty').value];
+});
 $('start').onclick=init;$('replay').onclick=init;$('back').onclick=exit;
 $('home').onclick=()=>{if(window.confirm('Quitter la partie ?'))exit();};
 document.addEventListener('visibilitychange',()=>{last=0;});

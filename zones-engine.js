@@ -1,4 +1,4 @@
-/* BORDER BLITZ V6.0 — real-time provincial armies, independent economy per region.
+/* BORDER BLITZ V6.1 — difficulty-selectable AI, independent economy per region.
    Rendering/UI do not alter authoritative simulation. */
 (function(root){
 'use strict';
@@ -8,6 +8,15 @@ const TYPES={
  income:{name:'Atelier',cost:125,icon:'✦',description:'+8 points générés par seconde dans cette région'},
  reserve:{name:'Entrepôt',cost:105,icon:'▣',description:'+260 points de réserve dans cette région'}
 };
+// La difficulté modifie seulement la stratégie et la cadence de décision des IA.
+// Soldats, bâtiments, défenses et déplacements restent identiques pour tous.
+const AI_PRESETS=Object.freeze({
+ easy:Object.freeze({label:'Facile',firstMin:2.4,firstRandom:1.7,intervalMin:3.0,intervalRandom:1.8,
+   sendPct:45,minSource:95,spare:55,buildChance:.55,neutralChance:1,enemyChance:.16}),
+ normal:Object.freeze({label:'Moyen',firstMin:1.4,firstRandom:1.4,intervalMin:1.7,intervalRandom:1.3,
+   sendPct:62,minSource:85,spare:32,buildChance:.37,neutralChance:1,enemyChance:.55}),
+ hard:Object.freeze({label:'Difficile'})
+});
 const PALETTE=['#50d4f5','#f5966c','#b49afa','#f3c86c','#6ddbb5','#e18cc8','#78aaff','#c8dd85','#f3a674','#77d8d4'];
 function rng(seed){let n=seed>>>0;return ()=>{n=(Math.imul(1664525,n)+1013904223)>>>0;return n/4294967296;};}
 function clip(poly,a,b,c){
@@ -81,6 +90,10 @@ class ZoneGame{
    this.playerCount=Math.max(2,Math.min(10,this.zoneCount,Math.round(+opts.players||6)));
    this.duration=Math.max(180,Math.min(1800,Math.round(+opts.duration||600)));
    this.seed=Number.isFinite(+opts.seed)?(+opts.seed>>>0):82513;
+   // Par défaut, l'expérience est accueillante : le mode Difficile conserve l'ancienne IA.
+   this.difficulty=Object.prototype.hasOwnProperty.call(AI_PRESETS,opts.difficulty)
+     ?opts.difficulty:'normal';
+   this.aiPreset=AI_PRESETS[this.difficulty];
    this.random=rng(this.seed^0xa8b2d9c1);
    this.zones=makeMap(this.zoneCount,this.seed);
    for(const z of this.zones){
@@ -89,7 +102,9 @@ class ZoneGame{
    }
    this.players=Array.from({length:this.playerCount},(_,id)=>({
      id,name:id?'Royaume '+(id+1):'Vous',color:PALETTE[id],
-     ai:id!==0,thinking:.8+this.random()*1.7
+     ai:id!==0,thinking:this.difficulty==='hard'
+       ?(.8+this.random()*1.7)
+       :(this.aiPreset.firstMin+this.random()*this.aiPreset.firstRandom)
    }));
    // Écarter les capitales pour éviter un avantage aléatoire au départ.
    const starts=[this.nearestCenter()];
@@ -114,7 +129,7 @@ class ZoneGame{
    this.elapsed=0;this.active=true;this.flights=[];this.events=[];
    this.nextFlightId=1;this.totalSends=0;this.totalCaptures=0;this.totalBuilds=0;
    this.arrivedPackets=0;this.totalReinforcements=0;
-   this.notice(this.zoneCount+' régions · '+this.playerCount+' royaumes. Fais glisser une région vers une autre pour envoyer des troupes.');
+   this.notice(this.zoneCount+' régions · '+this.playerCount+' royaumes · IA '+this.aiPreset.label+'. Fais glisser une région vers une autre pour envoyer des troupes.');
  }
  nearestCenter(){
    let pick=0,best=Infinity;
@@ -231,7 +246,9 @@ class ZoneGame{
    for(const player of this.players)if(player.ai&&this.owned(player.id).length){
      player.thinking-=dt;
      if(player.thinking<=0){
-       player.thinking=.95+this.random()*1.5;
+       player.thinking=this.difficulty==='hard'
+         ?(.95+this.random()*1.5)
+         :(this.aiPreset.intervalMin+this.random()*this.aiPreset.intervalRandom);
        this.actAI(player.id);
      }
    }
@@ -242,6 +259,7 @@ class ZoneGame{
    }
  }
  actAI(owner){
+   if(this.difficulty!=='hard')return this.actMeasuredAI(owner);
    const regions=this.owned(owner);
    if(!regions.length)return;
    const capable=regions.filter(z=>z.points>=50).sort((a,b)=>b.points-a.points);
@@ -278,11 +296,68 @@ class ZoneGame{
      source.points>200?75:source.points>95?65:50;
    this.send(owner,source.id,dest.zone.id,use);
  }
+ // IA moins agressive pour les deux modes d'accueil :
+ // (1) conserve une réserve défensive ; (2) construit ;
+ // (3) vise d'abord les provinces neutres ; (4) attaque les autres royaumes
+ // seulement quand elle dispose d'un avantage suffisant.
+ actMeasuredAI(owner){
+   const cfg=this.aiPreset,regions=this.owned(owner);
+   if(!regions.length)return;
+   const eligible=regions.filter(z=>z.points>=cfg.minSource)
+     .sort((a,b)=>b.points-a.points);
+   if(!eligible.length)return;
+   const empty=regions.filter(z=>!z.building);
+   // D'abord stimuler l'économie afin d'offrir un vrai temps de préparation.
+   if(empty.length&&this.random()<cfg.buildChance){
+     const workshops=regions.filter(z=>z.building==='income').length;
+     let type=workshops<Math.ceil(regions.length*.5)?'income':
+       this.random()<.65?'attack':'reserve';
+     const buildingZone=empty.find(z=>z.points>=TYPES[type].cost);
+     if(buildingZone&&this.build(owner,buildingZone.id,type))return;
+   }
+   const source=eligible[0];
+   const outgoing=Math.floor(source.points*cfg.sendPct/100);
+   if(source.points-outgoing<cfg.spare||outgoing<12)return;
+   const boost=source.building==='attack'?1.4:1;
+   // Renforts locaux : uniquement quand une autre frontière est réellement faible.
+   const weak=regions.filter(z=>z.id!==source.id&&z.points<30&&
+     Math.hypot(z.cx-source.cx,z.cy-source.cy)<390);
+   if(weak.length&&this.random()<.38){
+     weak.sort((a,b)=>a.points-b.points);
+     this.send(owner,source.id,weak[0].id,Math.min(cfg.sendPct,50));
+     return;
+   }
+   const neutral=this.zones.filter(z=>z.owner===-1);
+   const targets=[];
+   for(const zone of this.zones){
+     if(zone.owner===owner)continue;
+     // Sur Facile/Moyen, toute attaque ennemie est délibérée et plus rare.
+     if(zone.owner>=0){
+       if(neutral.length&&this.random()>cfg.enemyChance)continue;
+       if(!neutral.length&&this.random()>Math.min(1,cfg.enemyChance+.20))continue;
+     }
+     const distance=Math.hypot(zone.cx-source.cx,zone.cy-source.cy);
+     const advantage=outgoing*boost/(zone.points+1);
+     // Sur Facile, ne pas lancer en continu des assauts suicidaires.
+     const minimum=zone.owner<0?(this.difficulty==='easy'?.78:.85)
+       :(this.difficulty==='easy'?1.22:1.02);
+     if(advantage<minimum)continue;
+     const priority=(zone.owner<0?1.3:1)*
+       (advantage>=1?1:.8)/
+       (35+distance*.20+zone.points*.50);
+     targets.push({zone,priority});
+   }
+   if(!targets.length)return;
+   targets.sort((a,b)=>b.priority-a.priority);
+   // Moyen reste moins prévisible, Facile préfère l'option la plus sûre.
+   const pick=this.difficulty==='easy'?0:Math.floor(this.random()*Math.min(2,targets.length));
+   this.send(owner,source.id,targets[pick].zone.id,cfg.sendPct);
+ }
  ranking(){
    return this.players.map(p=>({owner:p.id,zones:this.owned(p.id).length,
      points:Math.floor(this.stats(p.id).stored)}))
      .sort((a,b)=>b.zones-a.zones||b.points-a.points);
  }
 }
-root.BorderBlitzZoneCore={ZoneGame,makeMap,TYPES,PALETTE,W,H};
+root.BorderBlitzZoneCore={ZoneGame,makeMap,TYPES,AI_PRESETS,PALETTE,W,H};
 })(typeof window!=='undefined'?window:globalThis);
