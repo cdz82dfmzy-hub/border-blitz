@@ -1,414 +1,320 @@
 <!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
-<meta name="theme-color" content="#07141e">
-<title>BORDER BLITZ — Les royaumes</title>
-<meta name="description" content="50 régions. 10 royaumes. Un seul bâtiment par région. Conquiers, construis et domine dans BORDER BLITZ.">
-<style>
-:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#f2f7fc;--sub:#a0b8cc;--bg:#08131f;--panel:#112534;--line:#294657;--aqua:#65d7ed;--gold:#f7ca7f}
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071823"><title>BORDER BLITZ V6.0 — Fronts vivants</title>
+<meta name="description" content="50 régions et 10 royaumes : transfère des armées entre provinces, combats en temps réel et bâtiments locaux.">
+<style>:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;--bg:#071823;--panel:#102b39;--border:#305668;--ink:#f2f9fc;--mute:#a9c3d2;--aqua:#78e0e9}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink)}body{overscroll-behavior-y:none}
-button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:12px;background:#23465d;color:#eaf7ff;font-weight:720;padding:12px 15px;transition:background .15s,transform .15s}button:hover{background:#305d74}button:active{transform:scale(.98)}button:disabled{opacity:.40;cursor:default;transform:none}button.primary{background:#63d6eb;color:#07202b}button.primary:hover{background:#89e5f3}button.ghost{background:transparent;border:1px solid #35566a;color:var(--sub)}button.small{padding:8px 12px;font-size:13px}button:focus-visible,input:focus-visible{outline:2px solid #66e0fa;outline-offset:3px}
-.hidden,[hidden]{display:none!important}
-.brand{display:flex;align-items:center;gap:11px}.emblem{display:grid;place-items:center;width:42px;height:42px;border:1px solid #5ed4e9;border-radius:13px;font-size:26px;color:#65d6ed;background:#123040;box-shadow:0 0 20px #1e9fb442}
-.brand h1{font-size:19px;line-height:1;margin:0;letter-spacing:.10em;font-weight:900}.brand small{display:block;color:var(--sub);font-size:10px;letter-spacing:.22em;margin-top:6px}
-#menu{min-height:100dvh;background:radial-gradient(ellipse 68% 48% at 52% 14%,#1b5164aa,transparent 75%),#08131f;padding:20px 15px 40px}
-.menuShell{max-width:940px;margin:0 auto}.menuTop{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0 28px}.tag{font-size:10px;letter-spacing:.16em;border:1px solid #3b7081;border-radius:40px;color:#83d5e5;padding:8px 11px;text-transform:uppercase}
-.hero{padding:20px 0 26px}.eyebrow{color:var(--aqua);font-weight:800;letter-spacing:.2em;font-size:11px;text-transform:uppercase}.hero h2{font-size:clamp(34px,7vw,61px);max-width:660px;line-height:1.04;letter-spacing:-.052em;margin:15px 0}.hero p{color:#aac4d4;max-width:580px;line-height:1.6;font-size:15px}
-.menuGrid{display:grid;grid-template-columns:1fr .9fr;gap:22px}
-.panel{background:linear-gradient(145deg,#152c3b,#0e202d);border:1px solid #2c4a5b;border-radius:20px;padding:22px;box-shadow:0 15px 38px #01081135}
-.panel h3{margin:0 0 7px;font-size:17px}.muted{color:var(--sub);font-size:13px;line-height:1.5}.field{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #254252}.field span{font-weight:650;font-size:14px}.field select,.field input{width:110px;max-width:50%;background:#091b29;border:1px solid #335366;color:#e2f4fc;border-radius:10px;padding:9px 10px;font-size:14px;text-align:right}.field input[type=number]{appearance:textfield}.menuLaunch{display:block;width:100%;margin-top:19px;padding:16px;font-size:17px}
-.mechanics{display:grid;gap:11px;margin-top:18px}.mech{display:flex;gap:12px;padding:11px;border:1px solid #2b4657;border-radius:12px;background:#0c1d2a}.mech .symbol{flex-shrink:0;display:grid;place-items:center;width:39px;height:39px;border-radius:10px;background:#1c3b4b;font-size:22px;color:#cceeff}.mech b{display:block;font-size:13px;margin-bottom:3px}.mech p{font-size:12px;color:var(--sub);margin:0;line-height:1.45}
-.footerHint{font-size:12px;color:#7e9aac;margin:20px 2px}
-#game{height:auto;min-height:100dvh;background:#08131f}.topbar{padding:12px max(15px,env(safe-area-inset-left));display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #284352;gap:10px}.topbar .brand h1{font-size:15px}.topbar .brand small{font-size:9px}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px auto;max-width:1250px;padding:0 14px}.metric{background:#112738;border:1px solid #264758;border-radius:13px;padding:11px 10px;min-width:0}.metric b{display:block;font-size:clamp(16px,3vw,22px);letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.metric small{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#91aec0}.metric .accent{color:#79e6f3}
-.playLayout{max-width:1250px;margin:0 auto;padding:0 14px 20px;display:grid;grid-template-columns:minmax(0,1fr) 325px;align-items:start;gap:13px}
-.mapCard{background:linear-gradient(180deg,#0e2533,#0a1c29);border:1px solid #2d5062;border-radius:18px;overflow:hidden;min-width:0;position:relative}
-.mapTop{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 12px;border-bottom:1px solid #264456}.mapTop b{font-size:13px}.mapTop small{color:var(--sub);font-size:11px}.mapButtons{display:flex;gap:4px}.mapButtons button{padding:5px 9px;background:#244253;border-radius:8px}
-#map{display:block;width:100%;height:min(70dvh,720px);min-height:350px;touch-action:none;cursor:crosshair;background:radial-gradient(ellipse at center,#10283b,#081620)}
-.legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 11px;background:#0a1c29;font-size:11px;color:var(--sub)}.legend strong{color:#effbff}
-.side{display:grid;gap:12px}.zonePanel,.leaderPanel{background:linear-gradient(145deg,#132b3a,#0d202d);border:1px solid #2b4b5c;border-radius:17px;padding:17px}
-.sectionCaption{font-size:10px;text-transform:uppercase;letter-spacing:.17em;color:#75cbdf;margin-bottom:8px;font-weight:800}
-.zonePanel h2{font-size:23px;letter-spacing:-.035em;margin:0 0 4px}.zonePanel .subtitle{color:var(--sub);margin:0 0 16px;font-size:13px}
-.pill{display:inline-block;border:1px solid #3e6477;border-radius:60px;color:#b2d6e3;padding:5px 9px;font-size:11px}
-.zoneInfo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:13px 0}.zoneStat{border:1px solid #294959;background:#09202c;padding:11px;border-radius:12px}.zoneStat small{display:block;font-size:11px;color:var(--sub)}.zoneStat b{display:block;margin-top:3px;font-size:17px}
-.controlsTitle{font-size:12px;color:#d5f6ff;margin:15px 0 9px;font-weight:800}.buildActions{display:grid;gap:7px}.buildBtn{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:#204053;border:1px solid #355b70;padding:10px 12px}.buildBtn strong{display:block;font-size:13px}.buildBtn small{display:block;color:#a4c1cf;font-size:11px;font-weight:400;margin-top:3px}.buildBtn .price{color:#a3e8f4;white-space:nowrap;margin-left:7px;font-size:13px}
-.attackBox{margin-top:10px}input[type=range]{width:100%;accent-color:#65d6eb;cursor:pointer}.attackRow{display:flex;align-items:center;justify-content:space-between;margin:8px 0;font-size:13px}.attackRow strong{font-size:20px}.attackBtn{width:100%;margin-top:7px;padding:13px}.warning{color:#ffd39a;font-size:12px;line-height:1.5;margin-top:8px}
-.ranking{display:grid;gap:8px;margin-top:12px}.rankRow{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;font-size:12px}.rankDot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px}.rankRow b{font-size:12px;font-variant-numeric:tabular-nums}.rankPos{color:#83abbc}.rankRow.me{color:#93e7f6}.news{margin-top:12px;padding-top:12px;border-top:1px solid #2b4655;font-size:12px;line-height:1.5;color:#a8c3d0}.news p{margin:5px 0}
-#endOverlay{position:fixed;inset:0;background:#041019d9;z-index:10;display:grid;place-items:center;padding:14px}.endBox{background:linear-gradient(150deg,#1b3c4e,#0e2331);border:1px solid #4a8795;max-width:390px;width:100%;border-radius:22px;padding:26px;text-align:center;box-shadow:0 15px 80px #02080c}.endBox h2{font-size:30px;margin:10px 0}.endBox p{line-height:1.5;color:#b4cede}.endBox .buttons{display:grid;gap:8px;margin-top:18px}
-@media(max-width:850px){.menuGrid{grid-template-columns:1fr}.playLayout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr}.hero h2{font-size:40px}}
-@media(max-width:620px){#menu{padding:15px 13px 25px}.menuTop{padding-bottom:10px}.hero{padding:9px 0 16px}.hero h2{font-size:36px}.hero p{font-size:13px}.panel{padding:16px}.side{grid-template-columns:1fr}.metrics{gap:6px;margin:9px auto}.metric{padding:9px 7px}.metric b{font-size:16px}.metric small{font-size:9px}.playLayout{padding:0 9px 30px;gap:9px}.mapTop{padding:8px 9px}#map{height:49dvh;min-height:300px;max-height:460px}.zonePanel,.leaderPanel{padding:14px}.buildActions{grid-template-columns:1fr}.topbar{padding:9px}.topbar .brand h1{font-size:13px}.topbar .brand small{font-size:8px}.emblem{width:35px;height:35px;font-size:23px}}
-@media(prefers-reduced-motion:reduce){button{transition:none}}
-</style>
-</head>
+button,select,input{font:inherit}button{border:1px solid #39667a;border-radius:10px;background:#24495d;color:white;padding:10px 12px;cursor:pointer;font-weight:700}button:disabled{opacity:.4}button:focus-visible,select:focus-visible{outline:2px solid #8ceded;outline-offset:2px}
+[hidden]{display:none!important}.primary{background:#66dce8;color:#07202b;border-color:#66dce8}.ghost{background:#132b39}small,.muted{color:var(--mute)}
+#menu{min-height:100dvh;padding:20px;background:radial-gradient(ellipse at 40% 10%,#164459,#071823 65%)}.container{max-width:1000px;margin:auto}.brand{display:flex;gap:10px;align-items:center}.emblem{font-size:30px;background:#153c4b;border:1px solid #4aaabc;border-radius:12px;width:44px;height:44px;display:grid;place-items:center}.brand b{letter-spacing:.1em;font-size:17px}.brand small{display:block;letter-spacing:.13em;font-size:10px;color:#8bdde3;margin-top:5px}
+.hero{margin:34px 0}.hero h1{font-size:clamp(37px,7vw,65px);line-height:1.02;letter-spacing:-.055em;margin:10px 0 16px}.hero p{max-width:600px;color:#b2ccd9;line-height:1.65}.eyebrow{color:#8ce1e9;font-size:11px;font-weight:900;letter-spacing:.19em;text-transform:uppercase}
+.menuGrid{display:grid;grid-template-columns:1.1fr 1fr;gap:15px}.card{padding:20px;background:linear-gradient(145deg,#153646,#0e2432);border:1px solid var(--border);border-radius:18px}.card h2{font-size:18px;margin:0 0 10px}.field{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #355666;padding:12px 0;gap:10px;font-size:14px}.field select,.field input{border:1px solid #476b7b;border-radius:9px;background:#0a1d29;color:white;padding:8px;width:140px;max-width:55%}.start{width:100%;margin-top:18px;padding:15px;font-size:17px}.rule{display:flex;gap:12px;margin:12px 0;background:#0d2937;border:1px solid #315363;border-radius:12px;padding:12px;font-size:13px}.rule span{font-size:22px}.rule p{color:#abc9d6;line-height:1.45;margin:5px 0 0;font-size:12px}
+#game{min-height:100dvh}.top{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:10px;max-width:1150px;margin:auto}.stat{background:#12303d;border:1px solid #2e5669;border-radius:11px;padding:10px;min-width:0}.stat small{font-size:10px;display:block}.stat b{font-size:clamp(15px,3vw,23px);white-space:nowrap;font-variant-numeric:tabular-nums}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:12px;padding:0 10px 20px;max-width:1150px;margin:auto;align-items:start}.mapBox{overflow:hidden;background:#0b2331;border:1px solid #315b6b;border-radius:17px}.mapHead,.mapFoot{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;gap:8px;color:#bfd9e3;font-size:12px}.mapHead{border-bottom:1px solid #315464}.mapFoot{border-top:1px solid #284655}.mapHead button{padding:5px 10px}#map{display:block;width:100%;height:min(68dvh,650px);min-height:330px;touch-action:none;cursor:crosshair}
+.aside{display:grid;gap:12px}.panel{background:#102c3a;border:1px solid #315769;border-radius:16px;padding:16px}.caption{font-size:10px;font-weight:850;letter-spacing:.15em;color:#91e7ec;text-transform:uppercase}.panel h2{margin:8px 0;font-size:21px}.panel p{line-height:1.5;font-size:12px;color:#b5d0dd}.numbers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.number{background:#0a202d;border:1px solid #295165;border-radius:10px;padding:10px}.number small{display:block;font-size:11px}.number b{font-size:18px}.actions{display:grid;gap:7px}.actions button{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;padding:11px}.actions button small{display:block;font-size:11px;margin-top:3px}.fractions{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:9px 0}.fractions button{padding:8px 4px;font-size:12px}.fractions .chosen{background:#29818a;border-color:#9af4f2}.section{color:#d5edf5;font-weight:800;font-size:12px;margin:16px 0 7px}.send{width:100%;margin:0}.rank{display:grid;grid-template-columns:19px 1fr auto;align-items:center;gap:6px;font-size:12px;margin-top:9px}.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}.rank.me{color:#9cf0f6}.news{margin-top:14px;border-top:1px solid #31566b;padding-top:9px;font-size:12px;color:#a9c9d5}.news p{margin:4px 0}.help{font-size:12px;color:#b7d6de;line-height:1.5}
+#end{position:fixed;inset:0;background:#04121ddd;display:grid;place-items:center;z-index:3;padding:20px}#end .card{max-width:380px;width:100%;text-align:center}#end h2{font-size:30px}#end button{width:100%;margin-top:8px}
+@media(max-width:850px){.menuGrid,.layout{grid-template-columns:1fr}.aside{grid-template-columns:1fr 1fr}#map{height:55dvh}}
+@media(max-width:600px){#menu{padding:14px}.hero{margin:20px 0}.hero h1{font-size:39px}.hero p{font-size:13px}.card{padding:15px}.aside{grid-template-columns:1fr}.stats{padding:7px;gap:5px}.stat{padding:8px 6px}.stat small{font-size:9px}.stat b{font-size:16px}.layout{padding:0 7px 24px;gap:9px}#map{height:48dvh;min-height:290px;max-height:460px}.panel{padding:13px}.top .brand b{font-size:14px}}
+</style></head>
 <body>
-<section id="menu">
-  <div class="menuShell">
-    <header class="menuTop">
-      <div class="brand"><div class="emblem">◇</div><div><h1>BORDER BLITZ</h1><small>LA GUERRE DES RÉGIONS</small></div></div>
-      <span class="tag">Prototype V5.0</span>
-    </header>
-    <div class="hero">
-      <div class="eyebrow">Conquérir. Construire. Défendre.</div>
-      <h2>50 régions.<br>10 royaumes.<br>Un choix par territoire.</h2>
-      <p>Chaque région possède ses propres défenses. Conquiers les frontières, accumule des points et décide où implanter ton unique bâtiment : force militaire, production ou réserve.</p>
-    </div>
-    <div class="menuGrid">
-      <div class="panel">
-        <h3>Créer une partie</h3><div class="muted">Solo contre des royaumes contrôlés par l’ordinateur.</div>
-        <label class="field"><span>Régions</span><select id="zoneCount"><option value="15">15 régions</option><option value="25">25 régions</option><option value="35" selected>35 régions</option><option value="50">50 régions</option></select></label>
-        <label class="field"><span>Royaumes (toi compris)</span><select id="playerCount"><option value="2">2 royaumes</option><option value="4">4 royaumes</option><option value="6" selected>6 royaumes</option><option value="8">8 royaumes</option><option value="10">10 royaumes</option></select></label>
-        <label class="field"><span>Durée de la partie</span><select id="duration"><option value="360">6 minutes</option><option value="600" selected>10 minutes</option><option value="900">15 minutes</option></select></label>
-        <label class="field"><span>Seed de la carte</span><input id="seed" type="number" min="0" max="4294967295" placeholder="Aléatoire" inputmode="numeric"></label>
-        <button class="primary menuLaunch" id="start">Commencer la conquête <span aria-hidden="true">↗</span></button>
-      </div>
-      <div class="panel">
-        <h3>Trois bâtiments. Un emplacement.</h3>
-        <div class="muted">Tu ne peux construire qu’un seul bâtiment dans chaque région contrôlée.</div>
-        <div class="mechanics">
-          <div class="mech"><div class="symbol">⚔</div><div><b>Bastion · 140 points</b><p>+10 % de puissance d'attaque globale et +30 % lors d'une offensive lancée depuis cette région.</p></div></div>
-          <div class="mech"><div class="symbol">✦</div><div><b>Atelier · 125 points</b><p>+6 points de production par seconde, tant que la région reste contrôlée.</p></div></div>
-          <div class="mech"><div class="symbol">▣</div><div><b>Entrepôt · 110 points</b><p>+300 points à ta réserve maximale.</p></div></div>
-        </div>
-        <div class="footerHint">Astuce : les régions neutres ne sont jamais offertes. Même une région sans propriétaire doit être prise d'assaut.</div>
-      </div>
-    </div>
-    <div class="footerHint">Version précédente conservée : <a href="./legacy.html" style="color:#82dceb">BORDER BLITZ classique</a>.</div>
-  </div>
-</section>
+<section id="menu"><div class="container">
+<header class="brand"><div class="emblem">◇</div><div><b>BORDER BLITZ</b><small>LA GUERRE DES RÉGIONS · V6.0</small></div></header>
+<div class="hero"><span class="eyebrow">Conquérir · Renforcer · Construire</span><h1>Des armées vivantes.<br>Des territoires à défendre.</h1>
+<p>Inspiré de Mushroom Wars, mais avec de véritables provinces de tailles et formes variées. Fais glisser ton doigt entre deux régions : les escouades traversent la carte pour attaquer ou renforcer les alliés.</p></div>
+<div class="menuGrid">
+<div class="card"><h2>Nouvelle partie</h2><p class="muted">Jusqu’à 50 régions, avec au maximum 10 royaumes sur la carte.</p>
+<label class="field"><span>Régions</span><select id="zones"><option value="15">15 régions</option><option value="25">25 régions</option><option value="35" selected>35 régions</option><option value="50">50 régions</option></select></label>
+<label class="field"><span>Royaumes</span><select id="players"><option value="2">2 royaumes</option><option value="4">4 royaumes</option><option value="6" selected>6 royaumes</option><option value="8">8 royaumes</option><option value="10">10 royaumes</option></select></label>
+<label class="field"><span>Durée</span><select id="duration"><option value="360">6 minutes</option><option value="600" selected>10 minutes</option><option value="900">15 minutes</option></select></label>
+<label class="field"><span>Seed</span><input id="seed" type="number" inputmode="numeric" placeholder="Aléatoire" min="0" max="4294967295"></label>
+<button class="primary start" id="start">⚔ Commencer la conquête</button></div>
+<div class="card"><h2>Chaque province est une décision</h2><p class="muted">Les points appartiennent à chaque région. Les troupes voyagent réellement entre elles. Un bâtiment par région.</p>
+<div class="rule"><span>⚔</span><div><b>Bastion · 135 pts</b><p>+40 % de puissance pour les troupes envoyées depuis cette région.</p></div></div>
+<div class="rule"><span>✦</span><div><b>Atelier · 125 pts</b><p>+8 points produits par seconde dans cette région.</p></div></div>
+<div class="rule"><span>▣</span><div><b>Entrepôt · 105 pts</b><p>+260 points de stockage dans cette région.</p></div></div>
+<p class="muted">Même une région neutre possède une garnison qu'il faut vaincre.</p></div></div>
+<p class="muted">Anciennes versions : <a href="./v5.html">V5.0</a> · <a href="./legacy.html">V4.2 classique</a></p>
+</div></section>
 <section id="game" hidden>
-  <header class="topbar">
-    <div class="brand"><div class="emblem">◇</div><div><h1>BORDER BLITZ</h1><small>GUERRE DES RÉGIONS</small></div></div>
-    <button class="ghost small" id="home">☰ Menu</button>
-  </header>
-  <div class="metrics">
-    <div class="metric"><small>Points</small><b class="accent" id="points">0</b></div>
-    <div class="metric"><small>Production</small><b id="income">+0/s</b></div>
-    <div class="metric"><small>Réserve max.</small><b id="capacity">0</b></div>
-    <div class="metric"><small>Temps</small><b id="timer">10:00</b></div>
-  </div>
-  <div class="playLayout">
-    <div class="mapCard">
-      <div class="mapTop"><div><b id="mapHeading">Carte stratégique</b><small id="mapSub"> · 35 régions</small></div>
-        <div class="mapButtons"><button id="zoomOut" aria-label="Dézoomer">−</button><button id="zoomReset" aria-label="Vue générale">⌖</button><button id="zoomIn" aria-label="Zoomer">+</button></div>
-      </div>
-      <canvas id="map" aria-label="Carte des régions : toucher pour sélectionner une région"></canvas>
-      <div class="legend"><span><strong style="color:#6bd6ee">■</strong> Vous <strong style="color:#e0bd79">■</strong> IA <strong style="color:#a4bac6">■</strong> Neutre</span><span id="fps">Carte : — FPS</span></div>
-    </div>
-    <aside class="side">
-      <section class="zonePanel" id="zonePanel">
-        <div class="sectionCaption">Région sélectionnée</div><h2 id="zoneTitle">Sélectionne une région</h2>
-        <p class="subtitle" id="zoneSubtitle">Touche une zone de la carte pour interagir.</p>
-        <div id="zoneControls"></div>
-      </section>
-      <section class="leaderPanel">
-        <div class="sectionCaption">Conquête en cours</div>
-        <h3 style="margin:0;font-size:15px">Classement des royaumes</h3>
-        <div class="ranking" id="ranking"></div>
-        <div class="news" id="news" aria-live="polite"></div>
-      </section>
-    </aside>
-  </div>
-</section>
-<section id="endOverlay" hidden>
-  <div class="endBox">
-    <span class="eyebrow">Partie terminée</span>
-    <h2 id="endTitle">Fin de conquête</h2>
-    <p id="endText"></p>
-    <div class="buttons"><button id="again" class="primary">Rejouer</button><button id="back" class="ghost">Retour au menu</button></div>
-  </div>
-</section>
-<script src="./zones-engine.js?v=5.0.0"></script>
-<script>
-(function(){
+<header class="top"><div class="brand"><div class="emblem">◇</div><div><b>BORDER BLITZ</b><small>FRONTS VIVANTS · V6.0</small></div></div><button id="home">☰ Menu</button></header>
+<div class="stats">
+<div class="stat"><small>Soldats totaux</small><b id="points">0</b></div><div class="stat"><small>Production</small><b id="income">0</b></div>
+<div class="stat"><small>Régions</small><b id="zonesOwned">0</b></div><div class="stat"><small>Temps</small><b id="timer">10:00</b></div>
+</div>
+<div class="layout">
+<div class="mapBox"><div class="mapHead"><b id="mapTitle">Carte stratégique</b><span><button id="zoomOut">−</button> <button id="zoomReset">⌖</button> <button id="zoomIn">+</button></span></div>
+<canvas id="map" aria-label="Glisser d’une région à soi vers une autre pour envoyer des soldats"></canvas>
+<div class="mapFoot"><span>■ Vous · ◆ Neutres · ■ Adversaires</span><span id="fps">Carte — FPS</span></div></div>
+<aside class="aside">
+<div class="panel"><span class="caption">Région sélectionnée</span><h2 id="zoneTitle">Sélectionne une région</h2>
+<p id="zoneSubtitle" class="muted">Touche un territoire.</p><div id="controls"></div></div>
+<div class="panel"><span class="caption">Classement</span><h2>Royaumes</h2><div id="ranking"></div><div class="news" id="news"></div></div>
+</aside></div></section>
+<section id="end" hidden><div class="card"><span class="eyebrow">Partie terminée</span><h2 id="endTitle">Résultat</h2><p id="endDesc"></p>
+<button class="primary" id="replay">Nouvelle partie</button><button id="back">Retour au menu</button></div></section>
+<script src="./zones-engine.js?v=6.0.0"></script><script>(()=>{
 'use strict';
 const $=id=>document.getElementById(id);
 const Core=window.BorderBlitzZoneCore;
-if(!Core){document.body.textContent='Erreur de chargement du moteur de zones.';return;}
+if(!Core){$('menu').textContent='Erreur : le moteur du jeu ne s’est pas chargé.';return;}
 const {ZoneGame,TYPES,W,H}=Core;
-let game=null,selected=-1,frameId=0,lastNow=0,lastUI=0,lastFPSAt=0,fpsFrames=0;
-let zoom=1,panX=0,panY=0,pointers=new Map(),down=null,pinch=null;
-let scale=1,screenX=0,screenY=0,ctx=$('map').getContext('2d'),cw=0,ch=0,dpr=1;
-const int=x=>Math.round(x).toLocaleString('fr-FR');
-const zoneName=id=>'Région '+String(id+1).padStart(2,'0');
-function begin(){
-  cancelAnimationFrame(frameId);frameId=0;
-  const regionCount=Number($('zoneCount').value),num=Math.min(Number($('playerCount').value),regionCount);
-  const entered=$('seed').value.trim(),seed=entered===''?Math.floor(Math.random()*4294967296):Number(entered)>>>0;
-  $('seed').value=String(seed);
-  game=new ZoneGame({zones:regionCount,players:num,seed,duration:+$('duration').value});
-  selected=game.owned(0)[0].id;zoom=1;panX=0;panY=0;pointers.clear();down=null;pinch=null;
-  $('menu').hidden=true;$('game').hidden=false;$('endOverlay').hidden=true;
-  $('mapHeading').textContent='Carte n° '+seed;
-  $('mapSub').textContent=' · '+regionCount+' régions · '+num+' royaumes';
-  lastNow=0;lastUI=0;lastFPSAt=0;fpsFrames=0;
-  syncCanvas();refreshUI();frameId=requestAnimationFrame(loop);
+const canvas=$('map'),ctx=canvas.getContext('2d');
+let game=null,selection=-1,awaiting=-1,percentage=75,frame=0,last=0,lastUi=0,lastFps=0,fpsFrames=0;
+let zoom=1,pan={x:0,y:0},view={scale:1,x:0,y:0},size={w:1,h:1,dpr:1};
+const pointers=new Map();let gesture=null,pinch=null,zoneSignature='';
+const fmt=n=>Math.floor(n).toLocaleString('fr-FR'),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function init(){
+ cancelAnimationFrame(frame);
+ const text=$('seed').value.trim(),seed=text===''?(Math.random()*4294967296)>>>0:Number(text)>>>0;
+ $('seed').value=String(seed);
+ try{game=new ZoneGame({zones:+$('zones').value,players:+$('players').value,duration:+$('duration').value,seed});}
+ catch(error){window.alert('Erreur lors de la création du monde : '+error.message);return;}
+ selection=game.owned(0)[0]?.id??-1;awaiting=-1;percentage=75;zoom=1;pan={x:0,y:0};
+ gesture=null;pinch=null;pointers.clear();zoneSignature='';
+ $('menu').hidden=true;$('game').hidden=false;$('end').hidden=true;
+ $('mapTitle').textContent=game.zoneCount+' régions · '+game.playerCount+' royaumes · seed '+seed;
+ last=lastUi=lastFps=fpsFrames=0;
+ resize();updateUI(true);frame=requestAnimationFrame(loop);
 }
-function quit(){
-  cancelAnimationFrame(frameId);frameId=0;game=null;
-  $('menu').hidden=false;$('game').hidden=true;$('endOverlay').hidden=true;
-  pointers.clear();down=null;pinch=null;
+function exit(){
+ cancelAnimationFrame(frame);frame=0;game=null;gesture=null;pinch=null;pointers.clear();
+ $('game').hidden=true;$('menu').hidden=false;$('end').hidden=true;
 }
-function syncCanvas(){
-  if(!game)return;
-  const r=$('map').getBoundingClientRect();
-  const w=Math.max(1,Math.floor(r.width)),h=Math.max(1,Math.floor(r.height));
-  dpr=Math.min(2,window.devicePixelRatio||1);
-  if(cw!==w||ch!==h||$('map').width!==Math.round(w*dpr)){
-    cw=w;ch=h;$('map').width=Math.round(w*dpr);$('map').height=Math.round(h*dpr);
+function resize(){
+ if(!game)return;
+ const r=canvas.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height));
+ const dpr=Math.min(2,window.devicePixelRatio||1);
+ if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){
+  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+ }
+ size={w,h,dpr};
+}
+function project(){
+ const {w,h}=size,s=Math.max(.001,Math.min((w-14)/W,(h-14)/H)*zoom);
+ const dx=Math.max(0,(s*W-w)/2+45),dy=Math.max(0,(s*H-h)/2+45);
+ pan.x=clamp(pan.x,-dx,dx);pan.y=clamp(pan.y,-dy,dy);
+ view={scale:s,x:(w-s*W)/2+pan.x,y:(h-s*H)/2+pan.y};
+}
+function pos(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+function contains(poly,x,y){
+ let inside=false;
+ for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+  const a=poly[i],b=poly[j];
+  if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)inside=!inside;
+ }
+ return inside;
+}
+function hit(p){
+ project();const x=(p.x-view.x)/view.scale,y=(p.y-view.y)/view.scale;
+ return game?.zones.find(z=>contains(z.poly,x,y))?.id??-1;
+}
+function polygon(poly){
+ ctx.beginPath();for(let i=0;i<poly.length;i++){const p=poly[i];if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);}
+ ctx.closePath();
+}
+function alpha(hex,a){
+ return 'rgba('+parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16)+','+a+')';
+}
+function render(){
+ if(!game)return;
+ resize();project();
+ const {w,h,dpr}=size,{scale:s,x,y}=view;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ ctx.fillStyle='#102b3a';ctx.fillRect(0,0,w,h);
+ ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+ for(const z of game.zones){
+  polygon(z.poly);
+  const color=z.owner<0?'#687f86':game.players[z.owner].color;
+  ctx.fillStyle=alpha(color,z.owner<0?.42:.78);ctx.fill();
+  ctx.lineWidth=(selection===z.id?3.3:1.45)/s;
+  ctx.strokeStyle=selection===z.id?'#f6ecb6':awaiting===z.id?'#b3ffec':'#0f2d3a';ctx.stroke();
+  if(z.flash>=0&&game.elapsed-z.flash<.65){
+   ctx.fillStyle=alpha(color,.45*(1-(game.elapsed-z.flash)/.65));ctx.fill();
   }
-}
-function calcView(){
-  scale=Math.min((cw-18)/W,(ch-18)/H)*zoom;
-  const maxX=Math.max(0,(W*scale-cw)/2+45),maxY=Math.max(0,(H*scale-ch)/2+45);
-  panX=Math.min(maxX,Math.max(-maxX,panX));
-  panY=Math.min(maxY,Math.max(-maxY,panY));
-  screenX=(cw-W*scale)/2+panX;screenY=(ch-H*scale)/2+panY;
-}
-function drawPath(poly){
-  ctx.beginPath();for(let i=0;i<poly.length;i++){
-    const p=poly[i];if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
-  }ctx.closePath();
-}
-function colorWithAlpha(hex,alpha){
-  const h=hex.replace('#','');
-  const r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16);
-  return 'rgba('+r+','+g+','+b+','+alpha+')';
-}
-function drawMap(){
-  if(!game)return;
-  syncCanvas();calcView();
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  const grd=ctx.createLinearGradient(0,0,cw,ch);
-  grd.addColorStop(0,'#0f3042');grd.addColorStop(1,'#071824');
-  ctx.fillStyle=grd;ctx.fillRect(0,0,cw,ch);
-  ctx.save();ctx.translate(screenX,screenY);ctx.scale(scale,scale);
-  const playerNeighbours=new Set();
-  for(const z of game.zones)if(z.owner!==0&&game.adjacency(0,z.id).length)playerNeighbours.add(z.id);
-  for(const z of game.zones){
-    drawPath(z.poly);
-    const owner=z.owner,colour=owner===-1?'#526b76':game.players[owner].color;
-    ctx.fillStyle=colorWithAlpha(colour,owner===-1?.39:.69);ctx.fill();
-    ctx.lineWidth=(z.id===selected?3.8:playerNeighbours.has(z.id)?2.4:1.25)/scale;
-    ctx.strokeStyle=z.id===selected?'#f3f7c2':playerNeighbours.has(z.id)?'#92e2ee':'#1b3848';ctx.stroke();
-    if(z.id===selected){
-      ctx.save();ctx.lineWidth=6/scale;ctx.strokeStyle='#b4effb44';ctx.stroke();ctx.restore();
-    }
+ }
+ // Escouades réelles : paquets individuels, défilement et traces.
+ for(const f of game.flights){
+  const a=game.zones[f.from],b=game.zones[f.to];
+  const dx=b.cx-a.cx,dy=b.cy-a.cy,d=Math.max(1,Math.hypot(dx,dy)),tint=game.players[f.owner].color;
+  ctx.strokeStyle=alpha(tint,.23);ctx.lineWidth=1.8/s;ctx.setLineDash([5/s,9/s]);
+  ctx.beginPath();ctx.moveTo(a.cx,a.cy);ctx.lineTo(b.cx,b.cy);ctx.stroke();ctx.setLineDash([]);
+  for(const pack of f.packets){
+   if(pack.done||game.elapsed<pack.launch)continue;
+   const t=clamp((game.elapsed-pack.launch)/(pack.arrival-pack.launch),0,1);
+   const sideways=Math.sin(f.id*8+pack.launch*12)*1.8/s;
+   const px=a.cx+dx*t-dy/d*sideways,py=a.cy+dy*t+dx/d*sideways;
+   ctx.fillStyle=alpha(tint,.30);ctx.beginPath();ctx.arc(px,py,7/s,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#f6ffff';ctx.beginPath();ctx.arc(px,py,3.2/s,0,Math.PI*2);ctx.fill();
   }
-  // Tactical connections and moving assault progress.
-  for(const b of game.battles){
-    const a=game.zones[b.from],z=game.zones[b.target],p=game.players[b.owner];
-    const q=Math.max(0,Math.min(1,1-b.remaining/b.duration)),pulse=(Math.sin(game.elapsed*12)+1)/2;
-    ctx.save();ctx.lineWidth=(3+2*pulse)/scale;ctx.strokeStyle=colorWithAlpha(p.color,.6+.3*pulse);
-    ctx.beginPath();ctx.moveTo(a.cx,a.cy);ctx.lineTo(z.cx,z.cy);ctx.stroke();
-    const px=a.cx+(z.cx-a.cx)*q,py=a.cy+(z.cy-a.cy)*q;
-    ctx.beginPath();ctx.arc(px,py,5/scale,0,Math.PI*2);ctx.fillStyle='#f7fdff';ctx.fill();
-    ctx.beginPath();ctx.arc(z.cx,z.cy,18/scale,-Math.PI/2,-Math.PI/2+2*Math.PI*q);
-    ctx.strokeStyle='#ffffff';ctx.lineWidth=3/scale;ctx.stroke();ctx.restore();
-  }
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  for(const z of game.zones){
-    const labelPx=Math.sqrt(z.area)*scale;
-    const selectedZone=z.id===selected;
-    if(labelPx<21&&!selectedZone)continue;
-    const x=z.cx,y=z.cy;
-    ctx.save();
-    ctx.font='800 '+(Math.max(10,Math.min(15,labelPx*.22))/scale)+'px system-ui';
-    ctx.lineWidth=3/scale;ctx.strokeStyle='#0a1c28e0';ctx.fillStyle='#f7fdff';
-    const text=String(z.id+1).padStart(2,'0');
-    ctx.strokeText(text,x,y);ctx.fillText(text,x,y);
-    if(z.building){
-      ctx.font='bold '+(Math.max(11,Math.min(16,labelPx*.24))/scale)+'px system-ui';
-      ctx.fillStyle='#ffe3a5';
-      ctx.fillText(TYPES[z.building].icon,x,y+15/scale);
-    }else if(z.owner===-1&&labelPx>34){
-      ctx.font='600 '+(10/scale)+'px system-ui';
-      ctx.fillStyle='#bdd0d8';
-      ctx.fillText('◆ '+int(z.defense),x,y+13/scale);
-    }
-    if(z.flash&&game.elapsed-z.flash<1.2){
-      const t=(game.elapsed-z.flash)/1.2;
-      ctx.beginPath();ctx.arc(x,y,(12+t*45)/scale,0,Math.PI*2);
-      ctx.lineWidth=(3*(1-t))/scale;ctx.strokeStyle=colorWithAlpha(game.players[z.owner].color,1-t);ctx.stroke();
-    }
-    ctx.restore();
-  }
+ }
+ if(gesture?.drag&&gesture.source>=0&&game.zones[gesture.source].owner===0){
+  const a=game.zones[gesture.source],to=gesture.now;
+  ctx.strokeStyle='#bcfff3';ctx.lineWidth=3/s;ctx.setLineDash([11/s,6/s]);
+  ctx.beginPath();ctx.moveTo(a.cx,a.cy);ctx.lineTo((to.x-x)/s,(to.y-y)/s);ctx.stroke();ctx.setLineDash([]);
+ }
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const z of game.zones){
+  const diam=Math.sqrt(z.area)*s;ctx.save();
+  ctx.font='900 '+clamp(diam*.34,12,18)/s+'px system-ui';
+  ctx.fillStyle='#fff';ctx.strokeStyle='#092330';ctx.lineWidth=2.6/s;
+  const soldiers=fmt(z.points);ctx.strokeText(soldiers,z.cx,z.cy);ctx.fillText(soldiers,z.cx,z.cy);
+  ctx.font='bold '+(10/s)+'px system-ui';ctx.fillStyle='#e5f3ef';
+  ctx.fillText((z.owner<0?'◇':'')+String(z.id+1).padStart(2,'0'),z.cx,z.cy-16/s);
+  if(z.building){
+   ctx.fillStyle='#ffdfa5';ctx.font='bold '+(17/s)+'px system-ui';
+   ctx.fillText(TYPES[z.building].icon,z.cx,z.cy+18/s);
+  }else if(z.owner<0){ctx.fillStyle='#d7e2df';ctx.font='bold '+(11/s)+'px system-ui';ctx.fillText('◆',z.cx,z.cy+16/s);}
   ctx.restore();
+ }
+ ctx.restore();
 }
-function pointIn(poly,x,y){
-  let inside=false;
-  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
-    const a=poly[i],b=poly[j];
-    if(((a.y>y)!==(b.y>y))&&(x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x))inside=!inside;
-  }
-  return inside;
+function buildPanel(){
+ const c=$('controls');c.replaceChildren();
+ if(!game||selection<0){$('zoneTitle').textContent='Sélectionne une région';$('zoneSubtitle').textContent='Touche un territoire pour voir sa garnison.';return;}
+ const z=game.zones[selection],mine=z.owner===0;
+ $('zoneTitle').textContent='Région '+String(z.id+1).padStart(2,'0');
+ $('zoneSubtitle').textContent=(z.owner<0?'Neutre':game.players[z.owner].name)+' · '+z.neighbors.length+' régions voisines';
+ const numbers=document.createElement('div');numbers.className='numbers';
+ const soldiers=document.createElement('div'),cap=document.createElement('div');
+ soldiers.className=cap.className='number';
+ soldiers.innerHTML='<small>'+(mine?'Garnison locale':z.owner<0?'Défense neutre':'Garnison adverse')+'</small><b id="localPoints">'+fmt(z.points)+'</b>';
+ cap.innerHTML='<small>'+(mine?'Capacité locale':'Bâtiment')+'</small><b id="localCap">'+(mine?fmt(game.zoneCapacity(z)):(z.building?TYPES[z.building].name:'Aucun'))+'</b>';
+ numbers.append(soldiers,cap);c.append(numbers);
+ if(!mine){
+  const p=document.createElement('p');p.className='help';
+  p.textContent='Fais glisser des soldats depuis une région à toi jusqu’ici pour '+(z.owner<0?'conquérir cette région neutre.':'attaquer ce royaume.');
+  c.append(p);return;
+ }
+ const rate=document.createElement('p');rate.className='help';rate.id='rate';
+ rate.textContent='Production locale : +'+game.zoneRate(z).toFixed(1)+'/s';
+ c.append(rate);
+ const sendTitle=document.createElement('div');sendTitle.className='section';sendTitle.textContent='Part des soldats à envoyer';c.append(sendTitle);
+ const fractions=document.createElement('div');fractions.className='fractions';
+ for(const n of [25,50,75,100]){
+  const btn=document.createElement('button');btn.textContent=n+' %';btn.className=n===percentage?'chosen':'';
+  btn.onclick=()=>{percentage=n;buildPanel();};fractions.append(btn);
+ }c.append(fractions);
+ const send=document.createElement('button');send.className='primary send';send.id='send';
+ send.textContent=awaiting===selection?'Touchez une destination sur la carte':'Envoyer des soldats →';
+ send.disabled=Math.floor(z.points*percentage/100)<12;
+ send.onclick=()=>{awaiting=selection;buildPanel();};
+ c.append(send);
+ const note=document.createElement('p');note.className='help';
+ note.textContent=awaiting===selection?'Choisis la destination en touchant la carte.':'Ou glisse directement le doigt de cette région vers une autre. Les régions alliées reçoivent des renforts.';
+ c.append(note);
+ const buildingTitle=document.createElement('div');buildingTitle.className='section';
+ buildingTitle.textContent=z.building?'Bâtiment : '+TYPES[z.building].name:'Construction (un seul bâtiment)';c.append(buildingTitle);
+ const buildings=document.createElement('div');buildings.className='actions';
+ for(const [type,info] of Object.entries(TYPES)){
+  const button=document.createElement('button');button.dataset.build=type;
+  button.disabled=!game.canBuild(0,z.id,type);
+  const caption=document.createElement('span'),text=document.createElement('b'),desc=document.createElement('small');
+  text.textContent=info.icon+' '+info.name;desc.textContent=info.description;
+  caption.append(text,desc);
+  const price=document.createElement('b');price.textContent=info.cost+' pts';
+  button.append(caption,price);button.onclick=()=>{if(game?.build(0,z.id,type)){awaiting=-1;updateUI(true);}};
+  buildings.append(button);
+ }
+ c.append(buildings);
 }
-function hit(x,y){
-  calcView();const wx=(x-screenX)/scale,wy=(y-screenY)/scale;
-  return game?.zones.find(z=>pointIn(z.poly,wx,wy))?.id??-1;
+function updateUI(force=false){
+ if(!game)return;
+ const s=game.stats(0),remaining=Math.max(0,Math.ceil(game.duration-game.elapsed));
+ $('points').textContent=fmt(s.stored);
+ $('income').textContent='+'+s.income.toFixed(1).replace('.',',')+'/s';
+ $('zonesOwned').textContent=s.zones+' / '+game.zoneCount;
+ $('timer').textContent=String(Math.floor(remaining/60)).padStart(2,'0')+':'+String(remaining%60).padStart(2,'0');
+ const rank=$('ranking');rank.replaceChildren();
+ game.ranking().slice(0,6).forEach((item,i)=>{
+  const player=game.players[item.owner],row=document.createElement('div');row.className='rank'+(item.owner===0?' me':'');
+  const num=document.createElement('span');num.textContent=(i+1)+'.';
+  const name=document.createElement('span'),dot=document.createElement('span');dot.className='dot';dot.style.background=player.color;
+  name.append(dot,document.createTextNode(player.name));
+  const value=document.createElement('b');value.textContent=item.zones+' régions';
+  row.append(num,name,value);rank.append(row);
+ });
+ const news=$('news');news.replaceChildren();
+ game.events.slice(0,3).forEach(text=>{const el=document.createElement('p');el.textContent=text;news.append(el);});
+ const z=game.zones[selection];
+ const signature=z?[z.id,z.owner,z.building,awaiting,percentage].join(':'):'none';
+ if(force||signature!==zoneSignature){zoneSignature=signature;buildPanel();}
+ else if(z){
+  const local=$('localPoints');if(local)local.textContent=fmt(z.points);
+  const cap=$('localCap');if(cap&&z.owner===0)cap.textContent=fmt(game.zoneCapacity(z));
+  const send=$('send');if(send)send.disabled=Math.floor(z.points*percentage/100)<12;
+  for(const btn of $('controls').querySelectorAll('[data-build]'))
+   btn.disabled=!game.canBuild(0,z.id,btn.dataset.build);
+ }
 }
-function position(e){const box=$('map').getBoundingClientRect();return {x:e.clientX-box.left,y:e.clientY-box.top};}
-function applyZoom(value){zoom=Math.max(1,Math.min(3.5,value));calcView();}
-$('map').addEventListener('pointerdown',e=>{
-  if(!game)return;e.preventDefault();
-  try{$('map').setPointerCapture(e.pointerId);}catch(_){}
-  const p=position(e);pointers.set(e.pointerId,p);
-  if(pointers.size===1){down={id:e.pointerId,x:p.x,y:p.y,panX,panY,moved:false};pinch=null;}
-  if(pointers.size===2){
-    const [a,b]=[...pointers.values()];
-    pinch={start:Math.hypot(a.x-b.x,a.y-b.y),zoom};
-    down=null;
-  }
+function order(from,to){
+ if(!game||!game.active||from<0||to<0||from===to)return;
+ const ok=game.send(0,from,to,percentage);
+ if(!ok)game.notice('Pas assez de soldats dans la garnison de départ.');
+ selection=from;awaiting=-1;zoneSignature='';updateUI(true);
+}
+canvas.addEventListener('pointerdown',e=>{
+ if(!game||!game.active)return;
+ e.preventDefault();try{canvas.setPointerCapture(e.pointerId);}catch(_){}
+ const p=pos(e);pointers.set(e.pointerId,p);
+ if(pointers.size===1){
+  gesture={id:e.pointerId,start:p,now:p,source:hit(p),drag:false,px:pan.x,py:pan.y};pinch=null;
+ }else if(pointers.size===2){
+  const [a,b]=[...pointers.values()];
+  pinch={distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),zoom};gesture=null;
+ }
 });
-$('map').addEventListener('pointermove',e=>{
-  if(!pointers.has(e.pointerId)||!game)return;
-  const p=position(e);pointers.set(e.pointerId,p);
-  if(pointers.size===2&&pinch){
-    const [a,b]=[...pointers.values()];
-    applyZoom(pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.start));
-  }else if(down&&down.id===e.pointerId){
-    const delta=Math.hypot(p.x-down.x,p.y-down.y);
-    if(delta>7)down.moved=true;
-    if(down.moved){panX=down.panX+p.x-down.x;panY=down.panY+p.y-down.y;calcView();}
-  }
+canvas.addEventListener('pointermove',e=>{
+ if(!game||!pointers.has(e.pointerId))return;
+ const p=pos(e);pointers.set(e.pointerId,p);
+ if(pointers.size===2&&pinch){
+  const [a,b]=[...pointers.values()];
+  zoom=clamp(pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/pinch.distance,1,4);return;
+ }
+ if(!gesture||gesture.id!==e.pointerId)return;
+ gesture.now=p;
+ if(Math.hypot(p.x-gesture.start.x,p.y-gesture.start.y)>10)gesture.drag=true;
+ if(gesture.drag&&(gesture.source<0||game.zones[gesture.source].owner!==0)){
+  pan.x=gesture.px+p.x-gesture.start.x;pan.y=gesture.py+p.y-gesture.start.y;
+ }
 });
-function release(e){
-  if(!pointers.has(e.pointerId))return;
-  const p=position(e);const click=down&&down.id===e.pointerId&&!down.moved;
-  pointers.delete(e.pointerId);
-  down=null;pinch=null;
-  if(click&&game){selected=hit(p.x,p.y);refreshUI();}
+function pointerUp(e){
+ if(!pointers.has(e.pointerId))return;
+ const p=pos(e),g=gesture&&gesture.id===e.pointerId?gesture:null;pointers.delete(e.pointerId);
+ if(g&&game?.active){
+  const target=hit(p);
+  if(g.drag&&g.source>=0&&game.zones[g.source].owner===0&&target>=0&&target!==g.source)order(g.source,target);
+  else if(!g.drag&&awaiting>=0&&target>=0&&target!==awaiting)order(awaiting,target);
+  else if(!g.drag){selection=target;awaiting=-1;zoneSignature='';updateUI(true);}
+ }
+ gesture=null;if(pointers.size<2)pinch=null;
 }
-$('map').addEventListener('pointerup',release);
-$('map').addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);down=null;pinch=null;});
-$('map').addEventListener('wheel',e=>{if(!game)return;e.preventDefault();applyZoom(zoom*(e.deltaY>0?.9:1.1));},{passive:false});
-$('zoomIn').onclick=()=>applyZoom(zoom*1.35);
-$('zoomOut').onclick=()=>applyZoom(zoom/1.35);
-$('zoomReset').onclick=()=>{zoom=1;panX=0;panY=0;};
-function updateZonePanel(){
-  const title=$('zoneTitle'),desc=$('zoneSubtitle'),box=$('zoneControls');
-  if(!game||selected<0){
-    title.textContent='Sélectionne une région';desc.textContent='Touche une zone de la carte pour interagir.';box.replaceChildren();return;
-  }
-  const z=game.zones[selected],person=z.owner>=0?game.players[z.owner]:null,ownerName=person?.name||'Région neutre';
-  title.textContent=zoneName(z.id);
-  desc.textContent=ownerName+' · '+z.neighbors.length+' régions limitrophes';
-  const adjacent=game.adjacency(0,selected).length>0;
-  box.innerHTML='<div class="zoneInfo"><div class="zoneStat"><small>Défense actuelle</small><b>'+int(z.defense)+'</b></div><div class="zoneStat"><small>Bâtiment</small><b>'+(z.building?TYPES[z.building].icon+' '+TYPES[z.building].name:'Aucun')+'</b></div></div>';
-  box.dataset.state=z.owner+':'+(z.building||'');
-  if(z.owner===0){
-    const cap=document.createElement('div');cap.className='controlsTitle';
-    cap.textContent=z.building?'Emplacement déjà occupé':'Construire dans cette région';
-    box.append(cap);
-    const actions=document.createElement('div');actions.className='buildActions';
-    for(const [type,def] of Object.entries(TYPES)){
-      const button=document.createElement('button');button.className='buildBtn';
-      button.disabled=!game.canBuild(0,selected,type);
-      button.dataset.build=type;
-      button.innerHTML='<span><strong>'+def.icon+' '+def.name+'</strong><small>'+def.description+'</small></span><span class="price">'+def.cost+' pts</span>';
-      button.onclick=()=>{if(game?.build(0,selected,type))refreshUI();};
-      actions.append(button);
-    }
-    box.append(actions);
-  }else if(adjacent){
-    const p=game.players[0],stats=game.stats(0);
-    const can=!p.attacking&&p.points>=15;
-    const section=document.createElement('div');section.className='attackBox';
-    section.innerHTML='<div class="controlsTitle">⚔ Assaut frontalier</div>'+
-      '<label for="power">Points à engager</label>'+
-      '<input id="power" type="range" min="10" max="100" step="5" value="'+(window.attackPercent||75)+'">'+
-      '<div class="attackRow"><span>Coût : <strong id="powerCost"></strong> points</span><span>Attaque <strong id="powerDamage"></strong></span></div>'+
-      '<button class="primary attackBtn" id="attackAction">Attaquer cette région</button>'+
-      '<p class="warning" id="attackHelp"></p>';
-    box.append(section);
-    const input=$('power'),cost=$('powerCost'),damage=$('powerDamage'),action=$('attackAction'),help=$('attackHelp');
-    function updateAttack(){
-      window.attackPercent=Number(input.value);
-      const points=Math.floor(p.points*window.attackPercent/100);
-      const neighbours=game.adjacency(0,z.id);
-      const local=neighbours.some(i=>game.zones[i].building==='attack')?.30:0;
-      const strength=Math.floor(points*(stats.multiplier+local));
-      cost.textContent=int(points);damage.textContent=int(strength);
-      const affordable=game.canAttack(0,selected,points);
-      action.disabled=!affordable;
-      help.textContent=p.attacking?'Une offensive est déjà en cours.':!affordable?'Attends d’avoir au moins 15 points.':
-        strength>=z.defense?'Puissance suffisante pour conquérir la région.':'Attaque partielle : les défenses restantes seront réduites.';
-    }
-    input.addEventListener('input',updateAttack);updateAttack();
-    action.onclick=()=>{
-      const target=selected,amount=Math.floor(game.players[0].points*Number(input.value)/100);
-      if(game.attack(0,target,amount))refreshUI();
-    };
-  }else{
-    const p=document.createElement('p');p.className='warning';
-    p.textContent='Cette région n’est pas frontalière. Conquiers d’abord une région voisine pour l’attaquer.';
-    box.append(p);
-  }
-}
-function updateScore(){
-  if(!game)return;
-  const me=game.players[0],st=game.stats(0),left=Math.max(0,Math.ceil(game.duration-game.elapsed));
-  $('points').textContent=int(Math.floor(me.points));
-  $('income').textContent='+'+st.income.toFixed(1).replace('.',',')+'/s';
-  $('capacity').textContent=int(st.capacity);
-  $('timer').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
-  $('ranking').innerHTML=game.ranking().slice(0,6).map((entry,i)=>{
-    const p=game.players[entry.owner];
-    return '<div class="rankRow '+(entry.owner===0?'me':'')+'"><span class="rankPos">'+(i+1)+'.</span><span><span class="rankDot" style="background:'+p.color+'"></span>'+p.name+'</span><b>'+entry.zones+' régions</b></div>';
-  }).join('');
-  $('news').innerHTML=game.events.slice(0,3).map(s=>'<p>'+s+'</p>').join('');
-}
-function updateLiveZone(){
-  if(!game||selected<0)return;
-  const z=game.zones[selected],box=$('zoneControls');
-  const state=z.owner+':'+(z.building||'');
-  // Ne jamais recréer le curseur pendant son utilisation.
-  if(box.dataset.state!==state){updateZonePanel();return;}
-  const values=box.querySelectorAll('.zoneStat b');
-  if(values[0])values[0].textContent=int(z.defense);
-  for(const button of box.querySelectorAll('button[data-build]'))
-    button.disabled=!game.canBuild(0,selected,button.dataset.build);
-  const power=$('power');
-  if(power)power.dispatchEvent(new Event('input'));
-}
-function refreshUI(){
-  if(!game)return;
-  updateScore();updateZonePanel();
-}
-function endGame(){
-  const standings=game.ranking(),rank=standings.findIndex(p=>p.owner===0)+1;
-  $('endTitle').textContent=rank===1?'Victoire stratégique !':'Conquête terminée';
-  $('endText').textContent='Classement : '+rank+' / '+game.playerCount+' · '+game.owned(0).length+' régions contrôlées sur '+game.zoneCount+'. '+game.totalCaptures+' régions ont changé de mains, '+game.buildCount+' bâtiments ont été construits.';
-  $('endOverlay').hidden=false;
+canvas.addEventListener('pointerup',pointerUp);
+canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=pinch=null;});
+canvas.addEventListener('wheel',e=>{if(!game)return;e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.9),1,4);},{passive:false});
+$('zoomIn').onclick=()=>{zoom=clamp(zoom*1.35,1,4);};
+$('zoomOut').onclick=()=>{zoom=clamp(zoom/1.35,1,4);};
+$('zoomReset').onclick=()=>{zoom=1;pan={x:0,y:0};};
+function end(){
+ const rank=game.ranking().findIndex(x=>x.owner===0)+1;
+ $('endTitle').textContent=rank===1?'Victoire stratégique !':'Partie terminée';
+ $('endDesc').textContent='Classement : '+rank+'/'+game.playerCount+'. Tu possèdes '+game.stats(0).zones+
+  ' régions sur '+game.zoneCount+'. '+game.totalSends+' mouvements, '+game.totalCaptures+' conquêtes et '+game.totalBuilds+' constructions.';
+ $('end').hidden=false;
 }
 function loop(now){
-  if(!game)return;
-  const dt=lastNow?Math.min((now-lastNow)/1000,.25):0;
-  lastNow=now;
-  if(document.hidden){frameId=requestAnimationFrame(loop);return;}
-  const wasActive=game.active;
-  if(wasActive)game.tick(dt);
-  drawMap();
-  fpsFrames++;
-  if(!lastFPSAt)lastFPSAt=now;
-  if(now-lastFPSAt>=1000){
-    $('fps').textContent='Carte : '+Math.round(fpsFrames*1000/(now-lastFPSAt))+' FPS';
-    fpsFrames=0;lastFPSAt=now;
-  }
-  if(!lastUI||now-lastUI>220){updateScore();updateLiveZone();lastUI=now;}
-  if(wasActive&&!game.active){refreshUI();endGame();}
-  if(game.active)frameId=requestAnimationFrame(loop);else frameId=0;
+ if(!game)return;
+ if(document.hidden){last=0;frame=requestAnimationFrame(loop);return;}
+ const dt=last?clamp((now-last)/1000,0,.1):0;last=now;
+ const active=game.active;if(active)game.tick(dt);
+ render();fpsFrames++;
+ if(!lastFps)lastFps=now;
+ if(now-lastFps>=1000){$('fps').textContent='Carte : '+Math.round(fpsFrames*1000/(now-lastFps))+' FPS';fpsFrames=0;lastFps=now;}
+ if(!lastUi||now-lastUi>=210){updateUI();lastUi=now;}
+ if(active&&!game.active){updateUI(true);end();}
+ if(game.active)frame=requestAnimationFrame(loop);else frame=0;
 }
-document.addEventListener('visibilitychange',()=>{lastNow=0;});
-$('start').addEventListener('click',begin);
-$('home').addEventListener('click',()=>{
-  if(confirm('Quitter la partie en cours ?'))quit();
-});
-$('again').onclick=begin;
-$('back').onclick=quit;
-window.addEventListener('resize',syncCanvas,{passive:true});
-})();
-</script>
-</body>
-</html>
+$('start').onclick=init;$('replay').onclick=init;$('back').onclick=exit;
+$('home').onclick=()=>{if(window.confirm('Quitter la partie ?'))exit();};
+document.addEventListener('visibilitychange',()=>{last=0;});
+window.addEventListener('resize',resize,{passive:true});
+})();</script></body></html>

@@ -1,13 +1,14 @@
-/* BORDER BLITZ — Zones v5.0 | deterministic engine; no DOM dependencies */
+/* BORDER BLITZ V6.0 — real-time provincial armies, independent economy per region.
+   Rendering/UI do not alter authoritative simulation. */
 (function(root){
 'use strict';
 const W=1000,H=720;
 const TYPES={
-  attack:{name:'Bastion',cost:140,icon:'⚔',description:'Puissance offensive : +10 % global et +30 % depuis cette zone.'},
-  income:{name:'Atelier',cost:125,icon:'✦',description:'Production : +6 points par seconde.'},
-  reserve:{name:'Entrepôt',cost:110,icon:'▣',description:'Réserve maximale : +300 points.'}
+ attack:{name:'Bastion',cost:135,icon:'⚔',description:'+40 % de force pour les troupes envoyées depuis cette région'},
+ income:{name:'Atelier',cost:125,icon:'✦',description:'+8 points générés par seconde dans cette région'},
+ reserve:{name:'Entrepôt',cost:105,icon:'▣',description:'+260 points de réserve dans cette région'}
 };
-const PALETTE=['#51cffb','#ff956d','#b6a0ff','#f1cb63','#69dea7','#e78bc8','#79a8fe','#c9dd7c','#f0aa7a','#72d9d3'];
+const PALETTE=['#50d4f5','#f5966c','#b49afa','#f3c86c','#6ddbb5','#e18cc8','#78aaff','#c8dd85','#f3a674','#77d8d4'];
 function rng(seed){let n=seed>>>0;return ()=>{n=(Math.imul(1664525,n)+1013904223)>>>0;return n/4294967296;};}
 function clip(poly,a,b,c){
   if(!poly.length)return [];
@@ -73,162 +74,215 @@ function makeMap(total,seed){
   for(const z of zones){z.baseDefense=z.defense;}
   return zones;
 }
+
 class ZoneGame{
-  constructor(opts={}){
-    this.zoneCount=Math.max(12,Math.min(50,Math.round(+opts.zones||35)));
-    this.playerCount=Math.max(2,Math.min(10,this.zoneCount,Math.round(+opts.players||6)));
-    this.duration=Math.max(180,Math.min(1800,Math.round(+opts.duration||600)));
-    this.seed=Number.isFinite(Number(opts.seed))?(Number(opts.seed)>>>0):82513;
-    this.random=rng(this.seed^0xa8b2d9c1);
-    this.zones=makeMap(this.zoneCount,this.seed);
-    this.players=Array.from({length:this.playerCount},(_,id)=>({
-      id,name:id===0?'Vous':'Royaume '+(id+1),color:PALETTE[id],points:id===0?250:220,
-      ai:id!==0,thinking:this.random()*3+1.5,attacking:null
-    }));
-    const chosen=[this.nearestCenter()];
-    while(chosen.length<this.playerCount){
-      let winner=-1,best=-1;
-      for(const z of this.zones)if(!chosen.includes(z.id)){
-        const min=Math.min(...chosen.map(i=>(this.zones[i].cx-z.cx)**2+(this.zones[i].cy-z.cy)**2));
-        if(min>best){best=min;winner=z.id;}
-      }
-      if(winner<0)throw Error('Impossible de placer tous les royaumes');
-      chosen.push(winner);
-    }
-    chosen.forEach((i,id)=>{const z=this.zones[i];z.owner=id;z.defense=110;z.baseDefense=110;});
-    this.elapsed=0;this.active=true;this.battles=[];this.events=[];
-    this.totalAttacks=0;this.totalCaptures=0;this.buildCount=0;
-    this.notice('Nouvelle partie : '+this.zoneCount+' régions, '+this.playerCount+' royaumes.');
-  }
-  nearestCenter(){
-    let id=0,d=Infinity;
-    for(const z of this.zones){const score=(z.cx-W/2)**2+(z.cy-H/2)**2;if(score<d){id=z.id;d=score;}}
-    return id;
-  }
-  notice(str){this.events.unshift(str);if(this.events.length>6)this.events.length=6;}
-  owned(id){return this.zones.filter(z=>z.owner===id);}
-  stats(id){
-    const owned=this.owned(id);
-    const counts={attack:0,income:0,reserve:0};
-    for(const z of owned)if(z.building)counts[z.building]++;
-    return {owned:owned.length,counts,income:8+owned.length*2.5+counts.income*6,
-      capacity:520+owned.length*45+counts.reserve*300,
-      multiplier:1+counts.attack*.10};
-  }
-  adjacency(id,target){
-    return this.zones[target].neighbors.filter(i=>this.zones[i].owner===id);
-  }
-  canBuild(owner,zone,type){
-    const z=this.zones[zone],p=this.players[owner],def=TYPES[type];
-    return !!(this.active&&p&&z&&def&&z.owner===owner&&!z.building&&p.points>=def.cost);
-  }
-  build(owner,zone,type){
-    if(!this.canBuild(owner,zone,type))return false;
-    const p=this.players[owner],z=this.zones[zone];
-    p.points-=TYPES[type].cost;z.building=type;this.buildCount++;
-    if(owner===0)this.notice(TYPES[type].name+' construit dans la région '+String(zone+1).padStart(2,'0')+'.');
-    return true;
-  }
-  maxCommit(owner){return Math.floor(this.players[owner]?.points||0);}
-  canAttack(owner,target,amount){
-    const p=this.players[owner],z=this.zones[target];
-    return !!(this.active&&p&&z&&z.owner!==owner&&!p.attacking&&
-      this.adjacency(owner,target).length&&Number.isFinite(amount)&&amount>=15&&amount<=p.points);
-  }
-  attack(owner,target,amount){
-    amount=Math.floor(amount);
-    if(!this.canAttack(owner,target,amount))return false;
-    const p=this.players[owner],zone=this.zones[target],owned=this.adjacency(owner,target);
-    const stats=this.stats(owner),from=owned.sort((a,b)=>
-      (this.zones[b].building==='attack')-(this.zones[a].building==='attack'))[0];
-    const local=this.zones[from].building==='attack'?.30:0;
-    const power=Math.floor(amount*(stats.multiplier+local));
-    p.points-=amount;
-    const battle={owner,target,from,amount,power,originalOwner:zone.owner,
-      start:this.elapsed,remaining:1.5+Math.min(1.5,amount/800),duration:1.5+Math.min(1.5,amount/800)};
-    p.attacking=battle;this.battles.push(battle);this.totalAttacks++;
-    if(owner===0)this.notice('Assaut sur la région '+String(target+1).padStart(2,'0')+' : '+power+' de puissance.');
-    return true;
-  }
-  resolve(battle){
-    const p=this.players[battle.owner],z=this.zones[battle.target];
-    if(p.attacking===battle)p.attacking=null;
-    if(!this.active)return;
-    if(z.owner!==battle.originalOwner||!this.adjacency(battle.owner,battle.target).length){
-      p.points=Math.min(this.stats(battle.owner).capacity,p.points+battle.amount);
-      if(battle.owner===0)this.notice('Assaut annulé : situation modifiée. Points remboursés.');
-      return;
-    }
-    z.defense=Math.max(0,z.defense-battle.power);
-    if(z.defense===0){
-      const was=z.owner;z.owner=battle.owner;z.building=null;
-      z.baseDefense=Math.round(80+Math.sqrt(z.area)*.24);
-      z.defense=Math.min(z.baseDefense,45);
-      if(was>=0){const loser=this.players[was];loser.points=Math.min(loser.points,this.stats(was).capacity);}
-      z.flash=this.elapsed;this.totalCaptures++;
-      if(battle.owner===0)this.notice('Région '+String(z.id+1).padStart(2,'0')+' conquise !');
-      if(was===0)this.notice('Une de vos régions vient de tomber !');
-    }else if(battle.owner===0)this.notice('Région '+String(z.id+1).padStart(2,'0')+' : '+z.defense+' défenses restantes.');
-  }
-  tick(dt){
-    if(!this.active)return;
-    dt=Math.min(Math.max(0,dt),.25);
-    this.elapsed+=dt;
-    for(const p of this.players){
-      const st=this.stats(p.id);
-      p.points=Math.min(st.capacity,p.points+st.income*dt);
-    }
-    for(const z of this.zones)if(z.owner>=0)
-      z.defense=Math.min(z.baseDefense,z.defense+dt*.8);
-    for(const battle of [...this.battles]){
-      battle.remaining-=dt;
-      if(battle.remaining<=0){
-        this.battles.splice(this.battles.indexOf(battle),1);
-        this.resolve(battle);
-      }
-    }
-    for(const p of this.players)if(p.ai){
-      p.thinking-=dt;
-      if(p.thinking<=0){p.thinking=1.2+this.random()*1.8;this.actAI(p.id);}
-    }
-    if(this.elapsed>=this.duration||this.zones.every(z=>z.owner>=0&&z.owner===this.zones[0].owner)){
-      this.active=false;this.battles.length=0;
-      for(const p of this.players)p.attacking=null;
-    }
-  }
-  actAI(id){
-    const p=this.players[id],stats=this.stats(id);
-    if(!stats.owned||p.attacking)return;
-    const owned=this.owned(id);
-    const empty=owned.filter(z=>!z.building);
-    if(empty.length&&p.points>180){
-      let desired=stats.counts.income<Math.max(1,Math.ceil(stats.owned/3))?'income':
-       p.points>stats.capacity*.8&&stats.counts.reserve<2?'reserve':
-       stats.counts.attack<Math.max(1,Math.floor(stats.owned/4))?'attack':null;
-      if(!desired&&this.random()<.4)desired=this.random()<.5?'attack':'income';
-      if(desired){
-        const preferred=desired==='attack'?empty.filter(z=>z.neighbors.some(n=>this.zones[n].owner!==id)):empty;
-        const place=(preferred.length?preferred:empty)[Math.floor(this.random()*(preferred.length||empty.length))];
-        if(this.build(id,place.id,desired))return;
-      }
-    }
-    const targets=[];
-    for(const z of this.zones){
-      if(z.owner===id||!this.adjacency(id,z.id).length)continue;
-      const mult=stats.multiplier+(this.adjacency(id,z.id).some(i=>this.zones[i].building==='attack')?.30:0);
-      const importance=(z.owner<0?1.3:1)+.2*this.random();
-      targets.push({id:z.id,cost:z.defense/mult,score:importance/(30+z.defense)});
-    }
-    if(!targets.length||p.points<45)return;
-    targets.sort((a,b)=>b.score-a.score);
-    const target=targets[Math.floor(this.random()*Math.min(3,targets.length))];
-    const amount=Math.min(Math.floor(p.points*.8),Math.max(45,Math.ceil(target.cost*1.05)));
-    if(amount>=15)this.attack(id,target.id,amount);
-  }
-  ranking(){
-    return this.players.map(p=>({owner:p.id,points:Math.floor(p.points),
-      zones:this.owned(p.id).length})).sort((a,b)=>b.zones-a.zones||b.points-a.points);
-  }
+ constructor(opts={}){
+   this.zoneCount=Math.max(12,Math.min(50,Math.round(+opts.zones||35)));
+   this.playerCount=Math.max(2,Math.min(10,this.zoneCount,Math.round(+opts.players||6)));
+   this.duration=Math.max(180,Math.min(1800,Math.round(+opts.duration||600)));
+   this.seed=Number.isFinite(+opts.seed)?(+opts.seed>>>0):82513;
+   this.random=rng(this.seed^0xa8b2d9c1);
+   this.zones=makeMap(this.zoneCount,this.seed);
+   for(const z of this.zones){
+     z.points=Math.round(65+this.random()*62+Math.sqrt(z.area)*.10);
+     z.building=null;z.owner=-1;z.flash=-1000;
+   }
+   this.players=Array.from({length:this.playerCount},(_,id)=>({
+     id,name:id?'Royaume '+(id+1):'Vous',color:PALETTE[id],
+     ai:id!==0,thinking:.8+this.random()*1.7
+   }));
+   // Écarter les capitales pour éviter un avantage aléatoire au départ.
+   const starts=[this.nearestCenter()];
+   while(starts.length<this.playerCount){
+     let best=-1,distance=-1;
+     for(const z of this.zones)if(!starts.includes(z.id)){
+       let nearest=Infinity;
+       for(const i of starts){
+         const anchor=this.zones[i];
+         const sq=(z.cx-anchor.cx)**2+(z.cy-anchor.cy)**2;
+         if(sq<nearest)nearest=sq;
+       }
+       if(nearest>distance){distance=nearest;best=z.id;}
+     }
+     if(best<0)throw Error('Placements impossibles');
+     starts.push(best);
+   }
+   for(let id=0;id<starts.length;id++){
+     const z=this.zones[starts[id]];
+     z.owner=id;z.points=id===0?225:200;z.building=null;
+   }
+   this.elapsed=0;this.active=true;this.flights=[];this.events=[];
+   this.nextFlightId=1;this.totalSends=0;this.totalCaptures=0;this.totalBuilds=0;
+   this.arrivedPackets=0;this.totalReinforcements=0;
+   this.notice(this.zoneCount+' régions · '+this.playerCount+' royaumes. Fais glisser une région vers une autre pour envoyer des troupes.');
+ }
+ nearestCenter(){
+   let pick=0,best=Infinity;
+   for(const z of this.zones){
+     const d=(z.cx-W/2)**2+(z.cy-H/2)**2;
+     if(d<best){pick=z.id;best=d;}
+   }
+   return pick;
+ }
+ notice(message){
+   this.events.unshift(message);
+   if(this.events.length>6)this.events.length=6;
+ }
+ zoneRate(zone){
+   return zone.owner<0?0:3.1+(zone.building==='income'?8:0);
+ }
+ zoneCapacity(zone){
+   return zone.owner<0?0:280+(zone.building==='reserve'?260:0);
+ }
+ owned(owner){return this.zones.filter(z=>z.owner===owner);}
+ stats(owner){
+   const zones=this.owned(owner),buildings={attack:0,income:0,reserve:0};
+   let stored=0,income=0,capacity=0;
+   for(const z of zones){
+     stored+=z.points;income+=this.zoneRate(z);capacity+=this.zoneCapacity(z);
+     if(z.building)buildings[z.building]++;
+   }
+   return {zones:zones.length,stored,income,capacity,buildings};
+ }
+ canBuild(owner,id,type){
+   const z=this.zones[id],t=TYPES[type];
+   return !!(this.active&&this.players[owner]&&z&&t&&z.owner===owner&&!z.building&&z.points>=t.cost);
+ }
+ build(owner,id,type){
+   if(!this.canBuild(owner,id,type))return false;
+   const z=this.zones[id];
+   z.points-=TYPES[type].cost;
+   z.building=type;this.totalBuilds++;
+   if(owner===0)this.notice(TYPES[type].name+' construit en région '+(id+1)+'.');
+   return true;
+ }
+ canSend(owner,from,to,pct){
+   const a=this.zones[from],b=this.zones[to],n=Number(pct);
+   return !!(this.active&&this.players[owner]&&a&&b&&a.owner===owner&&a.id!==b.id&&
+     Number.isFinite(n)&&n>=1&&n<=100&&Math.floor(a.points*n/100)>=12);
+ }
+ send(owner,from,to,pct){
+   if(!this.canSend(owner,from,to,pct))return false;
+   const a=this.zones[from],b=this.zones[to],amount=Math.floor(a.points*Number(pct)/100);
+   if(amount<12)return false;
+   a.points=Math.max(0,a.points-amount);
+   const dx=b.cx-a.cx,dy=b.cy-a.cy,distance=Math.hypot(dx,dy);
+   // Propagation successive des escouades comme dans un jeu de rush RTS.
+   const count=Math.max(3,Math.min(15,Math.ceil(amount/18)));
+   const rate=a.building==='attack'?1.4:1;
+   const base=Math.floor(amount/count),extra=amount%count;
+   const travel=.32+distance/365;
+   const packets=[];
+   for(let i=0;i<count;i++){
+     const troops=base+(i<extra?1:0);
+     const launch=this.elapsed+i*.065;
+     packets.push({troops,launch,arrival:launch+travel,done:false});
+   }
+   const flight={id:this.nextFlightId++,owner,from,to,amount,rate,packets,
+     createdAt:this.elapsed,travel,firstArrival:packets[0].arrival,
+     finalArrival:packets[packets.length-1].arrival};
+   this.flights.push(flight);this.totalSends++;
+   if(owner===0){
+     const friendly=b.owner===owner?'Renforts':'Assaut';
+     this.notice(friendly+' : région '+(from+1)+' → '+(to+1)+' ('+amount+' soldats).');
+   }
+   return flight;
+ }
+ hit(flight,packet){
+   const zone=this.zones[flight.to],sourceOwner=flight.owner;
+   if(!this.players[sourceOwner]||packet.troops<=0)return;
+   this.arrivedPackets++;
+   if(zone.owner===sourceOwner){
+     zone.points=Math.min(this.zoneCapacity(zone),zone.points+packet.troops);
+     this.totalReinforcements+=packet.troops;
+     return;
+   }
+   const strength=packet.troops*flight.rate;
+   if(strength<zone.points){
+     zone.points-=strength;
+     return;
+   }
+   const old=zone.owner;
+   const surplus=Math.max(0,strength-zone.points);
+   zone.owner=sourceOwner;zone.building=null;
+   zone.points=Math.max(1,Math.min(this.zoneCapacity(zone),surplus));
+   zone.flash=this.elapsed;
+   this.totalCaptures++;
+   if(sourceOwner===0)this.notice('Région '+(zone.id+1)+' conquise !');
+   if(old===0)this.notice('Ta région '+(zone.id+1)+' a été prise !');
+ }
+ tick(dt){
+   if(!this.active)return;
+   dt=Math.min(.10,Math.max(0,Number(dt)||0));
+   this.elapsed+=dt;
+   for(const z of this.zones)if(z.owner>=0)
+     z.points=Math.min(this.zoneCapacity(z),z.points+this.zoneRate(z)*dt);
+   const arrivals=[];
+   for(const flight of this.flights)for(const pack of flight.packets){
+     if(!pack.done&&pack.arrival<=this.elapsed){
+       pack.done=true;arrivals.push({flight,pack});
+     }
+   }
+   if(arrivals.length){
+     arrivals.sort((a,b)=>a.pack.arrival-b.pack.arrival||a.flight.id-b.flight.id);
+     for(const entry of arrivals)this.hit(entry.flight,entry.pack);
+   }
+   this.flights=this.flights.filter(f=>f.packets.some(p=>!p.done));
+   for(const player of this.players)if(player.ai&&this.owned(player.id).length){
+     player.thinking-=dt;
+     if(player.thinking<=0){
+       player.thinking=.95+this.random()*1.5;
+       this.actAI(player.id);
+     }
+   }
+   const alive=this.players.filter(p=>this.zones.some(z=>z.owner===p.id)).length;
+   const noPlayer=!this.owned(0).length&&!this.flights.some(f=>f.owner===0);
+   if(this.elapsed>=this.duration||noPlayer||(alive===1&&this.zones.every(z=>z.owner!==-1))){
+     this.active=false;
+   }
+ }
+ actAI(owner){
+   const regions=this.owned(owner);
+   if(!regions.length)return;
+   const capable=regions.filter(z=>z.points>=50).sort((a,b)=>b.points-a.points);
+   if(!capable.length)return;
+   // Un peu de développement économique avant la ruée.
+   const empty=regions.filter(z=>!z.building);
+   const incomeCount=regions.filter(z=>z.building==='income').length;
+   if(empty.length&&this.random()<.27){
+     const choice=incomeCount<Math.max(1,Math.floor(regions.length/3))?'income':
+       this.random()<.62?'attack':'reserve';
+     const place=empty.find(z=>z.points>=TYPES[choice].cost);
+     if(place&&this.build(owner,place.id,choice))return;
+   }
+   const source=capable[0];
+   let targets=[];
+   for(const zone of this.zones){
+     if(zone.id===source.id)continue;
+     const distance=Math.hypot(zone.cx-source.cx,zone.cy-source.cy);
+     if(zone.owner===owner){
+       if(zone.points<30&&source.points>105&&distance<450)
+         targets.push({zone,score:10-distance*.02,reinforce:true});
+       continue;
+     }
+     const available=source.points*.72*(source.building==='attack'?1.4:1);
+     const shortage=Math.max(0,zone.points-available);
+     const enemyFactor=zone.owner<0?1.2:.85;
+     const score=enemyFactor*200/(70+distance*.15+zone.points*.54+shortage*1.0)+this.random()*.12;
+     targets.push({zone,score,reinforce:false});
+   }
+   targets.sort((a,b)=>b.score-a.score);
+   const dest=targets[0];
+   if(!dest)return;
+   const use=dest.reinforce?60:
+     source.points>200?75:source.points>95?65:50;
+   this.send(owner,source.id,dest.zone.id,use);
+ }
+ ranking(){
+   return this.players.map(p=>({owner:p.id,zones:this.owned(p.id).length,
+     points:Math.floor(this.stats(p.id).stored)}))
+     .sort((a,b)=>b.zones-a.zones||b.points-a.points);
+ }
 }
 root.BorderBlitzZoneCore={ZoneGame,makeMap,TYPES,PALETTE,W,H};
 })(typeof window!=='undefined'?window:globalThis);

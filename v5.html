@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
+<meta name="theme-color" content="#07141e">
+<title>BORDER BLITZ — Les royaumes</title>
+<meta name="description" content="50 régions. 10 royaumes. Un seul bâtiment par région. Conquiers, construis et domine dans BORDER BLITZ.">
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#f2f7fc;--sub:#a0b8cc;--bg:#08131f;--panel:#112534;--line:#294657;--aqua:#65d7ed;--gold:#f7ca7f}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink)}body{overscroll-behavior-y:none}
+button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:12px;background:#23465d;color:#eaf7ff;font-weight:720;padding:12px 15px;transition:background .15s,transform .15s}button:hover{background:#305d74}button:active{transform:scale(.98)}button:disabled{opacity:.40;cursor:default;transform:none}button.primary{background:#63d6eb;color:#07202b}button.primary:hover{background:#89e5f3}button.ghost{background:transparent;border:1px solid #35566a;color:var(--sub)}button.small{padding:8px 12px;font-size:13px}button:focus-visible,input:focus-visible{outline:2px solid #66e0fa;outline-offset:3px}
+.hidden,[hidden]{display:none!important}
+.brand{display:flex;align-items:center;gap:11px}.emblem{display:grid;place-items:center;width:42px;height:42px;border:1px solid #5ed4e9;border-radius:13px;font-size:26px;color:#65d6ed;background:#123040;box-shadow:0 0 20px #1e9fb442}
+.brand h1{font-size:19px;line-height:1;margin:0;letter-spacing:.10em;font-weight:900}.brand small{display:block;color:var(--sub);font-size:10px;letter-spacing:.22em;margin-top:6px}
+#menu{min-height:100dvh;background:radial-gradient(ellipse 68% 48% at 52% 14%,#1b5164aa,transparent 75%),#08131f;padding:20px 15px 40px}
+.menuShell{max-width:940px;margin:0 auto}.menuTop{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0 28px}.tag{font-size:10px;letter-spacing:.16em;border:1px solid #3b7081;border-radius:40px;color:#83d5e5;padding:8px 11px;text-transform:uppercase}
+.hero{padding:20px 0 26px}.eyebrow{color:var(--aqua);font-weight:800;letter-spacing:.2em;font-size:11px;text-transform:uppercase}.hero h2{font-size:clamp(34px,7vw,61px);max-width:660px;line-height:1.04;letter-spacing:-.052em;margin:15px 0}.hero p{color:#aac4d4;max-width:580px;line-height:1.6;font-size:15px}
+.menuGrid{display:grid;grid-template-columns:1fr .9fr;gap:22px}
+.panel{background:linear-gradient(145deg,#152c3b,#0e202d);border:1px solid #2c4a5b;border-radius:20px;padding:22px;box-shadow:0 15px 38px #01081135}
+.panel h3{margin:0 0 7px;font-size:17px}.muted{color:var(--sub);font-size:13px;line-height:1.5}.field{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #254252}.field span{font-weight:650;font-size:14px}.field select,.field input{width:110px;max-width:50%;background:#091b29;border:1px solid #335366;color:#e2f4fc;border-radius:10px;padding:9px 10px;font-size:14px;text-align:right}.field input[type=number]{appearance:textfield}.menuLaunch{display:block;width:100%;margin-top:19px;padding:16px;font-size:17px}
+.mechanics{display:grid;gap:11px;margin-top:18px}.mech{display:flex;gap:12px;padding:11px;border:1px solid #2b4657;border-radius:12px;background:#0c1d2a}.mech .symbol{flex-shrink:0;display:grid;place-items:center;width:39px;height:39px;border-radius:10px;background:#1c3b4b;font-size:22px;color:#cceeff}.mech b{display:block;font-size:13px;margin-bottom:3px}.mech p{font-size:12px;color:var(--sub);margin:0;line-height:1.45}
+.footerHint{font-size:12px;color:#7e9aac;margin:20px 2px}
+#game{height:auto;min-height:100dvh;background:#08131f}.topbar{padding:12px max(15px,env(safe-area-inset-left));display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #284352;gap:10px}.topbar .brand h1{font-size:15px}.topbar .brand small{font-size:9px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px auto;max-width:1250px;padding:0 14px}.metric{background:#112738;border:1px solid #264758;border-radius:13px;padding:11px 10px;min-width:0}.metric b{display:block;font-size:clamp(16px,3vw,22px);letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.metric small{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#91aec0}.metric .accent{color:#79e6f3}
+.playLayout{max-width:1250px;margin:0 auto;padding:0 14px 20px;display:grid;grid-template-columns:minmax(0,1fr) 325px;align-items:start;gap:13px}
+.mapCard{background:linear-gradient(180deg,#0e2533,#0a1c29);border:1px solid #2d5062;border-radius:18px;overflow:hidden;min-width:0;position:relative}
+.mapTop{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 12px;border-bottom:1px solid #264456}.mapTop b{font-size:13px}.mapTop small{color:var(--sub);font-size:11px}.mapButtons{display:flex;gap:4px}.mapButtons button{padding:5px 9px;background:#244253;border-radius:8px}
+#map{display:block;width:100%;height:min(70dvh,720px);min-height:350px;touch-action:none;cursor:crosshair;background:radial-gradient(ellipse at center,#10283b,#081620)}
+.legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 11px;background:#0a1c29;font-size:11px;color:var(--sub)}.legend strong{color:#effbff}
+.side{display:grid;gap:12px}.zonePanel,.leaderPanel{background:linear-gradient(145deg,#132b3a,#0d202d);border:1px solid #2b4b5c;border-radius:17px;padding:17px}
+.sectionCaption{font-size:10px;text-transform:uppercase;letter-spacing:.17em;color:#75cbdf;margin-bottom:8px;font-weight:800}
+.zonePanel h2{font-size:23px;letter-spacing:-.035em;margin:0 0 4px}.zonePanel .subtitle{color:var(--sub);margin:0 0 16px;font-size:13px}
+.pill{display:inline-block;border:1px solid #3e6477;border-radius:60px;color:#b2d6e3;padding:5px 9px;font-size:11px}
+.zoneInfo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:13px 0}.zoneStat{border:1px solid #294959;background:#09202c;padding:11px;border-radius:12px}.zoneStat small{display:block;font-size:11px;color:var(--sub)}.zoneStat b{display:block;margin-top:3px;font-size:17px}
+.controlsTitle{font-size:12px;color:#d5f6ff;margin:15px 0 9px;font-weight:800}.buildActions{display:grid;gap:7px}.buildBtn{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:#204053;border:1px solid #355b70;padding:10px 12px}.buildBtn strong{display:block;font-size:13px}.buildBtn small{display:block;color:#a4c1cf;font-size:11px;font-weight:400;margin-top:3px}.buildBtn .price{color:#a3e8f4;white-space:nowrap;margin-left:7px;font-size:13px}
+.attackBox{margin-top:10px}input[type=range]{width:100%;accent-color:#65d6eb;cursor:pointer}.attackRow{display:flex;align-items:center;justify-content:space-between;margin:8px 0;font-size:13px}.attackRow strong{font-size:20px}.attackBtn{width:100%;margin-top:7px;padding:13px}.warning{color:#ffd39a;font-size:12px;line-height:1.5;margin-top:8px}
+.ranking{display:grid;gap:8px;margin-top:12px}.rankRow{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:7px;font-size:12px}.rankDot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px}.rankRow b{font-size:12px;font-variant-numeric:tabular-nums}.rankPos{color:#83abbc}.rankRow.me{color:#93e7f6}.news{margin-top:12px;padding-top:12px;border-top:1px solid #2b4655;font-size:12px;line-height:1.5;color:#a8c3d0}.news p{margin:5px 0}
+#endOverlay{position:fixed;inset:0;background:#041019d9;z-index:10;display:grid;place-items:center;padding:14px}.endBox{background:linear-gradient(150deg,#1b3c4e,#0e2331);border:1px solid #4a8795;max-width:390px;width:100%;border-radius:22px;padding:26px;text-align:center;box-shadow:0 15px 80px #02080c}.endBox h2{font-size:30px;margin:10px 0}.endBox p{line-height:1.5;color:#b4cede}.endBox .buttons{display:grid;gap:8px;margin-top:18px}
+@media(max-width:850px){.menuGrid{grid-template-columns:1fr}.playLayout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr}.hero h2{font-size:40px}}
+@media(max-width:620px){#menu{padding:15px 13px 25px}.menuTop{padding-bottom:10px}.hero{padding:9px 0 16px}.hero h2{font-size:36px}.hero p{font-size:13px}.panel{padding:16px}.side{grid-template-columns:1fr}.metrics{gap:6px;margin:9px auto}.metric{padding:9px 7px}.metric b{font-size:16px}.metric small{font-size:9px}.playLayout{padding:0 9px 30px;gap:9px}.mapTop{padding:8px 9px}#map{height:49dvh;min-height:300px;max-height:460px}.zonePanel,.leaderPanel{padding:14px}.buildActions{grid-template-columns:1fr}.topbar{padding:9px}.topbar .brand h1{font-size:13px}.topbar .brand small{font-size:8px}.emblem{width:35px;height:35px;font-size:23px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+</head>
+<body>
+<section id="menu">
+  <div class="menuShell">
+    <header class="menuTop">
+      <div class="brand"><div class="emblem">◇</div><div><h1>BORDER BLITZ</h1><small>LA GUERRE DES RÉGIONS</small></div></div>
+      <span class="tag">Prototype V5.0</span>
+    </header>
+    <div class="hero">
+      <div class="eyebrow">Conquérir. Construire. Défendre.</div>
+      <h2>50 régions.<br>10 royaumes.<br>Un choix par territoire.</h2>
+      <p>Chaque région possède ses propres défenses. Conquiers les frontières, accumule des points et décide où implanter ton unique bâtiment : force militaire, production ou réserve.</p>
+    </div>
+    <div class="menuGrid">
+      <div class="panel">
+        <h3>Créer une partie</h3><div class="muted">Solo contre des royaumes contrôlés par l’ordinateur.</div>
+        <label class="field"><span>Régions</span><select id="zoneCount"><option value="15">15 régions</option><option value="25">25 régions</option><option value="35" selected>35 régions</option><option value="50">50 régions</option></select></label>
+        <label class="field"><span>Royaumes (toi compris)</span><select id="playerCount"><option value="2">2 royaumes</option><option value="4">4 royaumes</option><option value="6" selected>6 royaumes</option><option value="8">8 royaumes</option><option value="10">10 royaumes</option></select></label>
+        <label class="field"><span>Durée de la partie</span><select id="duration"><option value="360">6 minutes</option><option value="600" selected>10 minutes</option><option value="900">15 minutes</option></select></label>
+        <label class="field"><span>Seed de la carte</span><input id="seed" type="number" min="0" max="4294967295" placeholder="Aléatoire" inputmode="numeric"></label>
+        <button class="primary menuLaunch" id="start">Commencer la conquête <span aria-hidden="true">↗</span></button>
+      </div>
+      <div class="panel">
+        <h3>Trois bâtiments. Un emplacement.</h3>
+        <div class="muted">Tu ne peux construire qu’un seul bâtiment dans chaque région contrôlée.</div>
+        <div class="mechanics">
+          <div class="mech"><div class="symbol">⚔</div><div><b>Bastion · 140 points</b><p>+10 % de puissance d'attaque globale et +30 % lors d'une offensive lancée depuis cette région.</p></div></div>
+          <div class="mech"><div class="symbol">✦</div><div><b>Atelier · 125 points</b><p>+6 points de production par seconde, tant que la région reste contrôlée.</p></div></div>
+          <div class="mech"><div class="symbol">▣</div><div><b>Entrepôt · 110 points</b><p>+300 points à ta réserve maximale.</p></div></div>
+        </div>
+        <div class="footerHint">Astuce : les régions neutres ne sont jamais offertes. Même une région sans propriétaire doit être prise d'assaut.</div>
+      </div>
+    </div>
+    <div class="footerHint">Version précédente conservée : <a href="./legacy.html" style="color:#82dceb">BORDER BLITZ classique</a>.</div>
+  </div>
+</section>
+<section id="game" hidden>
+  <header class="topbar">
+    <div class="brand"><div class="emblem">◇</div><div><h1>BORDER BLITZ</h1><small>GUERRE DES RÉGIONS</small></div></div>
+    <button class="ghost small" id="home">☰ Menu</button>
+  </header>
+  <div class="metrics">
+    <div class="metric"><small>Points</small><b class="accent" id="points">0</b></div>
+    <div class="metric"><small>Production</small><b id="income">+0/s</b></div>
+    <div class="metric"><small>Réserve max.</small><b id="capacity">0</b></div>
+    <div class="metric"><small>Temps</small><b id="timer">10:00</b></div>
+  </div>
+  <div class="playLayout">
+    <div class="mapCard">
+      <div class="mapTop"><div><b id="mapHeading">Carte stratégique</b><small id="mapSub"> · 35 régions</small></div>
+        <div class="mapButtons"><button id="zoomOut" aria-label="Dézoomer">−</button><button id="zoomReset" aria-label="Vue générale">⌖</button><button id="zoomIn" aria-label="Zoomer">+</button></div>
+      </div>
+      <canvas id="map" aria-label="Carte des régions : toucher pour sélectionner une région"></canvas>
+      <div class="legend"><span><strong style="color:#6bd6ee">■</strong> Vous <strong style="color:#e0bd79">■</strong> IA <strong style="color:#a4bac6">■</strong> Neutre</span><span id="fps">Carte : — FPS</span></div>
+    </div>
+    <aside class="side">
+      <section class="zonePanel" id="zonePanel">
+        <div class="sectionCaption">Région sélectionnée</div><h2 id="zoneTitle">Sélectionne une région</h2>
+        <p class="subtitle" id="zoneSubtitle">Touche une zone de la carte pour interagir.</p>
+        <div id="zoneControls"></div>
+      </section>
+      <section class="leaderPanel">
+        <div class="sectionCaption">Conquête en cours</div>
+        <h3 style="margin:0;font-size:15px">Classement des royaumes</h3>
+        <div class="ranking" id="ranking"></div>
+        <div class="news" id="news" aria-live="polite"></div>
+      </section>
+    </aside>
+  </div>
+</section>
+<section id="endOverlay" hidden>
+  <div class="endBox">
+    <span class="eyebrow">Partie terminée</span>
+    <h2 id="endTitle">Fin de conquête</h2>
+    <p id="endText"></p>
+    <div class="buttons"><button id="again" class="primary">Rejouer</button><button id="back" class="ghost">Retour au menu</button></div>
+  </div>
+</section>
+<script src="./zones-engine.js?v=5.0.0"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const Core=window.BorderBlitzZoneCore;
+if(!Core){document.body.textContent='Erreur de chargement du moteur de zones.';return;}
+const {ZoneGame,TYPES,W,H}=Core;
+let game=null,selected=-1,frameId=0,lastNow=0,lastUI=0,lastFPSAt=0,fpsFrames=0;
+let zoom=1,panX=0,panY=0,pointers=new Map(),down=null,pinch=null;
+let scale=1,screenX=0,screenY=0,ctx=$('map').getContext('2d'),cw=0,ch=0,dpr=1;
+const int=x=>Math.round(x).toLocaleString('fr-FR');
+const zoneName=id=>'Région '+String(id+1).padStart(2,'0');
+function begin(){
+  cancelAnimationFrame(frameId);frameId=0;
+  const regionCount=Number($('zoneCount').value),num=Math.min(Number($('playerCount').value),regionCount);
+  const entered=$('seed').value.trim(),seed=entered===''?Math.floor(Math.random()*4294967296):Number(entered)>>>0;
+  $('seed').value=String(seed);
+  game=new ZoneGame({zones:regionCount,players:num,seed,duration:+$('duration').value});
+  selected=game.owned(0)[0].id;zoom=1;panX=0;panY=0;pointers.clear();down=null;pinch=null;
+  $('menu').hidden=true;$('game').hidden=false;$('endOverlay').hidden=true;
+  $('mapHeading').textContent='Carte n° '+seed;
+  $('mapSub').textContent=' · '+regionCount+' régions · '+num+' royaumes';
+  lastNow=0;lastUI=0;lastFPSAt=0;fpsFrames=0;
+  syncCanvas();refreshUI();frameId=requestAnimationFrame(loop);
+}
+function quit(){
+  cancelAnimationFrame(frameId);frameId=0;game=null;
+  $('menu').hidden=false;$('game').hidden=true;$('endOverlay').hidden=true;
+  pointers.clear();down=null;pinch=null;
+}
+function syncCanvas(){
+  if(!game)return;
+  const r=$('map').getBoundingClientRect();
+  const w=Math.max(1,Math.floor(r.width)),h=Math.max(1,Math.floor(r.height));
+  dpr=Math.min(2,window.devicePixelRatio||1);
+  if(cw!==w||ch!==h||$('map').width!==Math.round(w*dpr)){
+    cw=w;ch=h;$('map').width=Math.round(w*dpr);$('map').height=Math.round(h*dpr);
+  }
+}
+function calcView(){
+  scale=Math.min((cw-18)/W,(ch-18)/H)*zoom;
+  const maxX=Math.max(0,(W*scale-cw)/2+45),maxY=Math.max(0,(H*scale-ch)/2+45);
+  panX=Math.min(maxX,Math.max(-maxX,panX));
+  panY=Math.min(maxY,Math.max(-maxY,panY));
+  screenX=(cw-W*scale)/2+panX;screenY=(ch-H*scale)/2+panY;
+}
+function drawPath(poly){
+  ctx.beginPath();for(let i=0;i<poly.length;i++){
+    const p=poly[i];if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+  }ctx.closePath();
+}
+function colorWithAlpha(hex,alpha){
+  const h=hex.replace('#','');
+  const r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16);
+  return 'rgba('+r+','+g+','+b+','+alpha+')';
+}
+function drawMap(){
+  if(!game)return;
+  syncCanvas();calcView();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const grd=ctx.createLinearGradient(0,0,cw,ch);
+  grd.addColorStop(0,'#0f3042');grd.addColorStop(1,'#071824');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,cw,ch);
+  ctx.save();ctx.translate(screenX,screenY);ctx.scale(scale,scale);
+  const playerNeighbours=new Set();
+  for(const z of game.zones)if(z.owner!==0&&game.adjacency(0,z.id).length)playerNeighbours.add(z.id);
+  for(const z of game.zones){
+    drawPath(z.poly);
+    const owner=z.owner,colour=owner===-1?'#526b76':game.players[owner].color;
+    ctx.fillStyle=colorWithAlpha(colour,owner===-1?.39:.69);ctx.fill();
+    ctx.lineWidth=(z.id===selected?3.8:playerNeighbours.has(z.id)?2.4:1.25)/scale;
+    ctx.strokeStyle=z.id===selected?'#f3f7c2':playerNeighbours.has(z.id)?'#92e2ee':'#1b3848';ctx.stroke();
+    if(z.id===selected){
+      ctx.save();ctx.lineWidth=6/scale;ctx.strokeStyle='#b4effb44';ctx.stroke();ctx.restore();
+    }
+  }
+  // Tactical connections and moving assault progress.
+  for(const b of game.battles){
+    const a=game.zones[b.from],z=game.zones[b.target],p=game.players[b.owner];
+    const q=Math.max(0,Math.min(1,1-b.remaining/b.duration)),pulse=(Math.sin(game.elapsed*12)+1)/2;
+    ctx.save();ctx.lineWidth=(3+2*pulse)/scale;ctx.strokeStyle=colorWithAlpha(p.color,.6+.3*pulse);
+    ctx.beginPath();ctx.moveTo(a.cx,a.cy);ctx.lineTo(z.cx,z.cy);ctx.stroke();
+    const px=a.cx+(z.cx-a.cx)*q,py=a.cy+(z.cy-a.cy)*q;
+    ctx.beginPath();ctx.arc(px,py,5/scale,0,Math.PI*2);ctx.fillStyle='#f7fdff';ctx.fill();
+    ctx.beginPath();ctx.arc(z.cx,z.cy,18/scale,-Math.PI/2,-Math.PI/2+2*Math.PI*q);
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=3/scale;ctx.stroke();ctx.restore();
+  }
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(const z of game.zones){
+    const labelPx=Math.sqrt(z.area)*scale;
+    const selectedZone=z.id===selected;
+    if(labelPx<21&&!selectedZone)continue;
+    const x=z.cx,y=z.cy;
+    ctx.save();
+    ctx.font='800 '+(Math.max(10,Math.min(15,labelPx*.22))/scale)+'px system-ui';
+    ctx.lineWidth=3/scale;ctx.strokeStyle='#0a1c28e0';ctx.fillStyle='#f7fdff';
+    const text=String(z.id+1).padStart(2,'0');
+    ctx.strokeText(text,x,y);ctx.fillText(text,x,y);
+    if(z.building){
+      ctx.font='bold '+(Math.max(11,Math.min(16,labelPx*.24))/scale)+'px system-ui';
+      ctx.fillStyle='#ffe3a5';
+      ctx.fillText(TYPES[z.building].icon,x,y+15/scale);
+    }else if(z.owner===-1&&labelPx>34){
+      ctx.font='600 '+(10/scale)+'px system-ui';
+      ctx.fillStyle='#bdd0d8';
+      ctx.fillText('◆ '+int(z.defense),x,y+13/scale);
+    }
+    if(z.flash&&game.elapsed-z.flash<1.2){
+      const t=(game.elapsed-z.flash)/1.2;
+      ctx.beginPath();ctx.arc(x,y,(12+t*45)/scale,0,Math.PI*2);
+      ctx.lineWidth=(3*(1-t))/scale;ctx.strokeStyle=colorWithAlpha(game.players[z.owner].color,1-t);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function pointIn(poly,x,y){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const a=poly[i],b=poly[j];
+    if(((a.y>y)!==(b.y>y))&&(x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x))inside=!inside;
+  }
+  return inside;
+}
+function hit(x,y){
+  calcView();const wx=(x-screenX)/scale,wy=(y-screenY)/scale;
+  return game?.zones.find(z=>pointIn(z.poly,wx,wy))?.id??-1;
+}
+function position(e){const box=$('map').getBoundingClientRect();return {x:e.clientX-box.left,y:e.clientY-box.top};}
+function applyZoom(value){zoom=Math.max(1,Math.min(3.5,value));calcView();}
+$('map').addEventListener('pointerdown',e=>{
+  if(!game)return;e.preventDefault();
+  try{$('map').setPointerCapture(e.pointerId);}catch(_){}
+  const p=position(e);pointers.set(e.pointerId,p);
+  if(pointers.size===1){down={id:e.pointerId,x:p.x,y:p.y,panX,panY,moved:false};pinch=null;}
+  if(pointers.size===2){
+    const [a,b]=[...pointers.values()];
+    pinch={start:Math.hypot(a.x-b.x,a.y-b.y),zoom};
+    down=null;
+  }
+});
+$('map').addEventListener('pointermove',e=>{
+  if(!pointers.has(e.pointerId)||!game)return;
+  const p=position(e);pointers.set(e.pointerId,p);
+  if(pointers.size===2&&pinch){
+    const [a,b]=[...pointers.values()];
+    applyZoom(pinch.zoom*Math.hypot(a.x-b.x,a.y-b.y)/Math.max(1,pinch.start));
+  }else if(down&&down.id===e.pointerId){
+    const delta=Math.hypot(p.x-down.x,p.y-down.y);
+    if(delta>7)down.moved=true;
+    if(down.moved){panX=down.panX+p.x-down.x;panY=down.panY+p.y-down.y;calcView();}
+  }
+});
+function release(e){
+  if(!pointers.has(e.pointerId))return;
+  const p=position(e);const click=down&&down.id===e.pointerId&&!down.moved;
+  pointers.delete(e.pointerId);
+  down=null;pinch=null;
+  if(click&&game){selected=hit(p.x,p.y);refreshUI();}
+}
+$('map').addEventListener('pointerup',release);
+$('map').addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);down=null;pinch=null;});
+$('map').addEventListener('wheel',e=>{if(!game)return;e.preventDefault();applyZoom(zoom*(e.deltaY>0?.9:1.1));},{passive:false});
+$('zoomIn').onclick=()=>applyZoom(zoom*1.35);
+$('zoomOut').onclick=()=>applyZoom(zoom/1.35);
+$('zoomReset').onclick=()=>{zoom=1;panX=0;panY=0;};
+function updateZonePanel(){
+  const title=$('zoneTitle'),desc=$('zoneSubtitle'),box=$('zoneControls');
+  if(!game||selected<0){
+    title.textContent='Sélectionne une région';desc.textContent='Touche une zone de la carte pour interagir.';box.replaceChildren();return;
+  }
+  const z=game.zones[selected],person=z.owner>=0?game.players[z.owner]:null,ownerName=person?.name||'Région neutre';
+  title.textContent=zoneName(z.id);
+  desc.textContent=ownerName+' · '+z.neighbors.length+' régions limitrophes';
+  const adjacent=game.adjacency(0,selected).length>0;
+  box.innerHTML='<div class="zoneInfo"><div class="zoneStat"><small>Défense actuelle</small><b>'+int(z.defense)+'</b></div><div class="zoneStat"><small>Bâtiment</small><b>'+(z.building?TYPES[z.building].icon+' '+TYPES[z.building].name:'Aucun')+'</b></div></div>';
+  box.dataset.state=z.owner+':'+(z.building||'');
+  if(z.owner===0){
+    const cap=document.createElement('div');cap.className='controlsTitle';
+    cap.textContent=z.building?'Emplacement déjà occupé':'Construire dans cette région';
+    box.append(cap);
+    const actions=document.createElement('div');actions.className='buildActions';
+    for(const [type,def] of Object.entries(TYPES)){
+      const button=document.createElement('button');button.className='buildBtn';
+      button.disabled=!game.canBuild(0,selected,type);
+      button.dataset.build=type;
+      button.innerHTML='<span><strong>'+def.icon+' '+def.name+'</strong><small>'+def.description+'</small></span><span class="price">'+def.cost+' pts</span>';
+      button.onclick=()=>{if(game?.build(0,selected,type))refreshUI();};
+      actions.append(button);
+    }
+    box.append(actions);
+  }else if(adjacent){
+    const p=game.players[0],stats=game.stats(0);
+    const can=!p.attacking&&p.points>=15;
+    const section=document.createElement('div');section.className='attackBox';
+    section.innerHTML='<div class="controlsTitle">⚔ Assaut frontalier</div>'+
+      '<label for="power">Points à engager</label>'+
+      '<input id="power" type="range" min="10" max="100" step="5" value="'+(window.attackPercent||75)+'">'+
+      '<div class="attackRow"><span>Coût : <strong id="powerCost"></strong> points</span><span>Attaque <strong id="powerDamage"></strong></span></div>'+
+      '<button class="primary attackBtn" id="attackAction">Attaquer cette région</button>'+
+      '<p class="warning" id="attackHelp"></p>';
+    box.append(section);
+    const input=$('power'),cost=$('powerCost'),damage=$('powerDamage'),action=$('attackAction'),help=$('attackHelp');
+    function updateAttack(){
+      window.attackPercent=Number(input.value);
+      const points=Math.floor(p.points*window.attackPercent/100);
+      const neighbours=game.adjacency(0,z.id);
+      const local=neighbours.some(i=>game.zones[i].building==='attack')?.30:0;
+      const strength=Math.floor(points*(stats.multiplier+local));
+      cost.textContent=int(points);damage.textContent=int(strength);
+      const affordable=game.canAttack(0,selected,points);
+      action.disabled=!affordable;
+      help.textContent=p.attacking?'Une offensive est déjà en cours.':!affordable?'Attends d’avoir au moins 15 points.':
+        strength>=z.defense?'Puissance suffisante pour conquérir la région.':'Attaque partielle : les défenses restantes seront réduites.';
+    }
+    input.addEventListener('input',updateAttack);updateAttack();
+    action.onclick=()=>{
+      const target=selected,amount=Math.floor(game.players[0].points*Number(input.value)/100);
+      if(game.attack(0,target,amount))refreshUI();
+    };
+  }else{
+    const p=document.createElement('p');p.className='warning';
+    p.textContent='Cette région n’est pas frontalière. Conquiers d’abord une région voisine pour l’attaquer.';
+    box.append(p);
+  }
+}
+function updateScore(){
+  if(!game)return;
+  const me=game.players[0],st=game.stats(0),left=Math.max(0,Math.ceil(game.duration-game.elapsed));
+  $('points').textContent=int(Math.floor(me.points));
+  $('income').textContent='+'+st.income.toFixed(1).replace('.',',')+'/s';
+  $('capacity').textContent=int(st.capacity);
+  $('timer').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+  $('ranking').innerHTML=game.ranking().slice(0,6).map((entry,i)=>{
+    const p=game.players[entry.owner];
+    return '<div class="rankRow '+(entry.owner===0?'me':'')+'"><span class="rankPos">'+(i+1)+'.</span><span><span class="rankDot" style="background:'+p.color+'"></span>'+p.name+'</span><b>'+entry.zones+' régions</b></div>';
+  }).join('');
+  $('news').innerHTML=game.events.slice(0,3).map(s=>'<p>'+s+'</p>').join('');
+}
+function updateLiveZone(){
+  if(!game||selected<0)return;
+  const z=game.zones[selected],box=$('zoneControls');
+  const state=z.owner+':'+(z.building||'');
+  // Ne jamais recréer le curseur pendant son utilisation.
+  if(box.dataset.state!==state){updateZonePanel();return;}
+  const values=box.querySelectorAll('.zoneStat b');
+  if(values[0])values[0].textContent=int(z.defense);
+  for(const button of box.querySelectorAll('button[data-build]'))
+    button.disabled=!game.canBuild(0,selected,button.dataset.build);
+  const power=$('power');
+  if(power)power.dispatchEvent(new Event('input'));
+}
+function refreshUI(){
+  if(!game)return;
+  updateScore();updateZonePanel();
+}
+function endGame(){
+  const standings=game.ranking(),rank=standings.findIndex(p=>p.owner===0)+1;
+  $('endTitle').textContent=rank===1?'Victoire stratégique !':'Conquête terminée';
+  $('endText').textContent='Classement : '+rank+' / '+game.playerCount+' · '+game.owned(0).length+' régions contrôlées sur '+game.zoneCount+'. '+game.totalCaptures+' régions ont changé de mains, '+game.buildCount+' bâtiments ont été construits.';
+  $('endOverlay').hidden=false;
+}
+function loop(now){
+  if(!game)return;
+  const dt=lastNow?Math.min((now-lastNow)/1000,.25):0;
+  lastNow=now;
+  if(document.hidden){frameId=requestAnimationFrame(loop);return;}
+  const wasActive=game.active;
+  if(wasActive)game.tick(dt);
+  drawMap();
+  fpsFrames++;
+  if(!lastFPSAt)lastFPSAt=now;
+  if(now-lastFPSAt>=1000){
+    $('fps').textContent='Carte : '+Math.round(fpsFrames*1000/(now-lastFPSAt))+' FPS';
+    fpsFrames=0;lastFPSAt=now;
+  }
+  if(!lastUI||now-lastUI>220){updateScore();updateLiveZone();lastUI=now;}
+  if(wasActive&&!game.active){refreshUI();endGame();}
+  if(game.active)frameId=requestAnimationFrame(loop);else frameId=0;
+}
+document.addEventListener('visibilitychange',()=>{lastNow=0;});
+$('start').addEventListener('click',begin);
+$('home').addEventListener('click',()=>{
+  if(confirm('Quitter la partie en cours ?'))quit();
+});
+$('again').onclick=begin;
+$('back').onclick=quit;
+window.addEventListener('resize',syncCanvas,{passive:true});
+})();
+</script>
+</body>
+</html>
